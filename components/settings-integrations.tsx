@@ -10,9 +10,24 @@ interface Integration {
   id: string
   name: string
   description: string
-  icon: React.ReactNode
+  iconType: "slack" | "github" | "jira"
   connected: boolean
   features: string[]
+}
+
+const IntegrationIcon = ({ type }: { type: Integration["iconType"] }) => {
+  switch (type) {
+    case "slack":
+      return <Slack className="h-8 w-8" />
+    case "github":
+      return <Github className="h-8 w-8" />
+    case "jira":
+      return (
+        <svg className="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.214h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.757a1.001 1.001 0 0 0-1.001-1.001zM23.013 0H11.455a5.215 5.215 0 0 0 5.215 5.215h2.129v2.057A5.215 5.215 0 0 0 24 12.483V1.005A1.001 1.001 0 0 0 23.013 0Z" />
+        </svg>
+      )
+  }
 }
 
 export function SettingsIntegrations() {
@@ -21,7 +36,7 @@ export function SettingsIntegrations() {
       id: "slack",
       name: "Slack",
       description: "Send notifications and updates to your Slack workspace",
-      icon: <Slack className="h-8 w-8" />,
+      iconType: "slack",
       connected: false,
       features: [
         "Real-time grievance notifications",
@@ -33,7 +48,7 @@ export function SettingsIntegrations() {
       id: "github",
       name: "GitHub",
       description: "Automatically create issues for grievances",
-      icon: <Github className="h-8 w-8" />,
+      iconType: "github",
       connected: false,
       features: [
         "Auto-create issues from grievances",
@@ -45,11 +60,7 @@ export function SettingsIntegrations() {
       id: "jira",
       name: "Jira",
       description: "Track grievances as Jira tickets",
-      icon: (
-        <svg className="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.214h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.757a1.001 1.001 0 0 0-1.001-1.001zM23.013 0H11.455a5.215 5.215 0 0 0 5.215 5.215h2.129v2.057A5.215 5.215 0 0 0 24 12.483V1.005A1.001 1.001 0 0 0 23.013 0Z" />
-        </svg>
-      ),
+      iconType: "jira",
       connected: false,
       features: [
         "Create Jira tickets from grievances",
@@ -75,7 +86,9 @@ export function SettingsIntegrations() {
         <Card key={integration.id} className="p-6 flex flex-col">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="text-foreground">{integration.icon}</div>
+              <div className="text-foreground">
+                <IntegrationIcon type={integration.iconType} />
+              </div>
               <div>
                 <h3 className="font-semibold text-lg">{integration.name}</h3>
                 {integration.connected && (

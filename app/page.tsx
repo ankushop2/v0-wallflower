@@ -2,7 +2,7 @@ import { Suspense } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { LeaderboardTabs } from "@/components/leaderboard-tabs"
-import { PlusIcon } from "lucide-react"
+import { PlusIcon, SettingsIcon } from "lucide-react"
 
 export default function HomePage() {
   return (
@@ -27,18 +27,23 @@ export default function HomePage() {
             <Link href="/routing" className="text-sm font-medium text-muted-foreground hover:text-foreground">
               Routing
             </Link>
-            <Link href="/analytics" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-              Analytics
-            </Link>
           </nav>
 
-          <Link href="/new">
-            <Button className="gap-2">
-              <PlusIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">New Grievance</span>
-              <span className="sm:hidden">New</span>
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/settings">
+              <Button variant="outline" size="icon">
+                <SettingsIcon className="h-4 w-4" />
+                <span className="sr-only">Settings</span>
+              </Button>
+            </Link>
+            <Link href="/new">
+              <Button className="gap-2">
+                <PlusIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">New Grievance</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 
