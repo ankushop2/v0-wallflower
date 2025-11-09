@@ -17,12 +17,12 @@ import { Button } from "@/components/ui/button"
 
 interface ThreadViewProps {
   grievance: Grievance
-  events: ThreadEvent[]
-  messages: BlindMessage[]
-  triageSuggestion: TriageSuggestion
+  events?: ThreadEvent[] // Made events optional
+  messages?: BlindMessage[] // Made messages optional
+  triageSuggestion: TriageSuggestion | null // Made triageSuggestion optional
 }
 
-export function ThreadView({ grievance, events, messages, triageSuggestion }: ThreadViewProps) {
+export function ThreadView({ grievance, events = [], messages = [], triageSuggestion }: ThreadViewProps) {
   const [localUp, setLocalUp] = useState(grievance.up)
   const [localDown, setLocalDown] = useState(grievance.down)
   const [userVote, setUserVote] = useState<"up" | "down" | null>(null)
@@ -96,7 +96,7 @@ export function ThreadView({ grievance, events, messages, triageSuggestion }: Th
                 </div>
               )}
 
-              {grievance.tags.length > 0 && (
+              {grievance.tags && grievance.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {grievance.tags.map((tag) => (
                     <Badge key={tag} variant="secondary" className="text-xs">
@@ -107,7 +107,7 @@ export function ThreadView({ grievance, events, messages, triageSuggestion }: Th
               )}
 
               <div className="flex items-center justify-between pt-2 border-t border-border">
-                <ReactionBar reactions={grievance.reactions} onReact={handleReact} />
+                <ReactionBar reactions={grievance.reactions || []} onReact={handleReact} />
 
                 <Button variant="outline" size="sm" onClick={() => setIsDmDrawerOpen(true)} className="gap-2">
                   <MessageSquareIcon className="h-4 w-4" />
@@ -119,7 +119,7 @@ export function ThreadView({ grievance, events, messages, triageSuggestion }: Th
         </Card>
 
         {/* Triage Copilot (Moderator View) */}
-        <TriageCopilot suggestion={triageSuggestion} />
+        {triageSuggestion && <TriageCopilot suggestion={triageSuggestion} />}
 
         {/* Timeline */}
         <ThreadTimeline events={events} />

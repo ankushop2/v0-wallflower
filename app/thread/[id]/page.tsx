@@ -16,7 +16,7 @@ export default async function ThreadPage({ params }: ThreadPageProps) {
     const [grievanceResponse, threadResponse] = await Promise.all([APIClient.getGrievance(id), APIClient.getThread(id)])
 
     const grievance = grievanceResponse.grievance
-    const events = threadResponse.timeline
+    const events = threadResponse.events || threadResponse.timeline || []
 
     return (
       <div className="min-h-screen bg-background">

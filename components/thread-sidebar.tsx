@@ -13,6 +13,8 @@ interface ThreadSidebarProps {
 }
 
 export function ThreadSidebar({ grievance }: ThreadSidebarProps) {
+  const severityConfig = severityDescriptions[grievance.severity] || severityDescriptions[3]
+
   return (
     <Card className="p-6 space-y-6">
       <div>
@@ -34,7 +36,7 @@ export function ThreadSidebar({ grievance }: ThreadSidebarProps) {
                   />
                 ))}
               </div>
-              <span className="text-sm font-medium">{severityDescriptions[grievance.severity].label}</span>
+              <span className="text-sm font-medium">{severityConfig.label}</span>
             </div>
           </div>
 

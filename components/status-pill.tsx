@@ -7,7 +7,7 @@ interface StatusPillProps {
 }
 
 export function StatusPill({ status }: StatusPillProps) {
-  const config = statusDescriptions[status]
+  const config = statusDescriptions[status] || statusDescriptions["open"]
 
   const variantMap: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     blue: "default",
@@ -19,7 +19,7 @@ export function StatusPill({ status }: StatusPillProps) {
   }
 
   return (
-    <Badge variant={variantMap[config.color]} className="shrink-0">
+    <Badge variant={variantMap[config.color] || "default"} className="shrink-0">
       {config.label}
     </Badge>
   )

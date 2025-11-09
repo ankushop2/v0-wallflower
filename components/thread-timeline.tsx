@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card"
 import type { ThreadEvent } from "@/lib/types"
-import { formatDistanceToNow, format } from "date-fns"
+import { safeFormatDistanceToNow, safeFormat } from "@/lib/date-utils"
 import {
   CheckCircle2Icon,
   MessageSquareIcon,
@@ -16,10 +16,10 @@ import {
 import { Badge } from "@/components/ui/badge"
 
 interface ThreadTimelineProps {
-  events: ThreadEvent[]
+  events?: ThreadEvent[] // Made events optional to handle undefined
 }
 
-export function ThreadTimeline({ events }: ThreadTimelineProps) {
+export function ThreadTimeline({ events = [] }: ThreadTimelineProps) {
   return (
     <Card className="p-6">
       <h2 className="text-lg font-semibold mb-6">Activity Timeline</h2>
@@ -133,9 +133,9 @@ function TimelineEvent({ event, isLast }: TimelineEventProps) {
           <time
             className="text-xs text-muted-foreground shrink-0"
             dateTime={event.createdAt}
-            title={format(new Date(event.createdAt), "PPpp")}
+            title={safeFormat(event.createdAt, "PPpp")}
           >
-            {formatDistanceToNow(new Date(event.createdAt), { addSuffix: true })}
+            {safeFormatDistanceToNow(event.createdAt, { addSuffix: true })}
           </time>
         </div>
 

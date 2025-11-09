@@ -8,10 +8,14 @@ import { SparklesIcon, CheckIcon, TrendingUpIcon, GitMergeIcon, UsersIcon } from
 import { Separator } from "@/components/ui/separator"
 
 interface TriageCopilotProps {
-  suggestion: TriageSuggestion
+  suggestion: TriageSuggestion | null
 }
 
 export function TriageCopilot({ suggestion }: TriageCopilotProps) {
+  if (!suggestion) {
+    return null
+  }
+
   const handleCopyDraft = () => {
     if (suggestion.askForInfoDraft) {
       navigator.clipboard.writeText(suggestion.askForInfoDraft)
@@ -65,9 +69,9 @@ export function TriageCopilot({ suggestion }: TriageCopilotProps) {
                     className="flex items-start justify-between gap-3 rounded-lg border border-border p-3 hover:border-primary/50 transition-colors"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium line-clamp-1">{dup.title}</p>
+                      <p className="text-sm font-medium line-clamp-1">{dup.title || "Untitled"}</p>
                       <Badge variant="secondary" className="mt-1 text-xs">
-                        {Math.round(dup.similarity * 100)}% similar
+                        {Math.round((dup.similarity || 0) * 100)}% similar
                       </Badge>
                     </div>
                     <Button variant="outline" size="sm">

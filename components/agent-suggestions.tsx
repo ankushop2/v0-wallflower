@@ -91,14 +91,14 @@ export function AgentSuggestions({
             <div className="space-y-2">
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-1">Title:</p>
-                <p className="text-sm">{suggestions.rewrite.suggestion.title}</p>
+                <p className="text-sm">{suggestions.rewrite.suggestion?.title || "No title provided"}</p>
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-1">Body preview:</p>
-                <p className="text-sm line-clamp-3">{suggestions.rewrite.suggestion.body}</p>
+                <p className="text-sm line-clamp-3">{suggestions.rewrite.suggestion?.body || "No body provided"}</p>
               </div>
               <div className="flex flex-wrap gap-1">
-                {suggestions.rewrite.suggestion.changes.map((change, i) => (
+                {(suggestions.rewrite.suggestion?.changes || []).map((change, i) => (
                   <Badge key={i} variant="secondary" className="text-xs">
                     {change}
                   </Badge>
@@ -117,7 +117,7 @@ export function AgentSuggestions({
             onAccept={suggestions.pii.suggestion.redactions.length > 0 ? onAcceptPii : undefined}
           >
             <div className="space-y-2">
-              {suggestions.pii.suggestion.redactions.length === 0 ? (
+              {!suggestions.pii.suggestion?.redactions || suggestions.pii.suggestion.redactions.length === 0 ? (
                 <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
                   <CheckIcon className="h-4 w-4" />
                   No PII detected
@@ -150,10 +150,10 @@ export function AgentSuggestions({
           >
             <div className="space-y-2">
               <Badge variant="outline" className="text-sm">
-                {suggestions.categorize.suggestion.category}
+                {suggestions.categorize.suggestion?.category || "Other"}
               </Badge>
               <div className="flex flex-wrap gap-1">
-                {suggestions.categorize.suggestion.tags.map((tag, i) => (
+                {(suggestions.categorize.suggestion?.tags || []).map((tag, i) => (
                   <Badge key={i} variant="secondary" className="text-xs">
                     #{tag}
                   </Badge>
@@ -176,12 +176,12 @@ export function AgentSuggestions({
                   <div
                     key={level}
                     className={`h-2 w-8 rounded ${
-                      level <= suggestions.severity!.suggestion.severity ? "bg-primary" : "bg-muted"
+                      level <= (suggestions.severity?.suggestion?.severity || 1) ? "bg-primary" : "bg-muted"
                     }`}
                   />
                 ))}
               </div>
-              <span className="text-sm font-medium">Level {suggestions.severity.suggestion.severity}</span>
+              <span className="text-sm font-medium">Level {suggestions.severity.suggestion?.severity || 1}</span>
             </div>
           </SuggestionCard>
         )}

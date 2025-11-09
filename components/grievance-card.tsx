@@ -67,7 +67,7 @@ export function GrievanceCard({ grievance, compact = false }: GrievanceCardProps
     // Call API
     try {
       await apiClient.voteGrievance(grievance.id, {
-        type: userVote === type ? "unvote" : type,
+        type: type,
         anonymous_token: anonymousToken,
       })
     } catch (error) {

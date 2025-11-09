@@ -7,12 +7,28 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
 
     const sort = searchParams.get("sort") || "new"
+    const period = searchParams.get("period") || "week"
     const status = searchParams.get("status")
     const category = searchParams.get("category")
     const limit = Number.parseInt(searchParams.get("limit") || "50")
     const offset = Number.parseInt(searchParams.get("offset") || "0")
 
     let query = supabase.from("grievances").select("*").eq("is_hidden", false)
+
+    const now = new Date()
+    let startDate: Date
+
+    if (period === "today") {
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    } else if (period === "week") {
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    } else if (period === "month") {
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    } else {
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) // default to week
+    }
+
+    query = query.gte("created_at", startDate.toISOString())
 
     // Apply filters
     if (status) {
@@ -29,9 +45,7 @@ export async function GET(request: NextRequest) {
       query = query.order("upvotes", { ascending: false })
     } else if (sort === "rising") {
       // Rising: Recent posts with good upvote ratio
-      query = query
-        .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-        .order("upvotes", { ascending: false })
+      query = query.order("upvotes", { ascending: false })
     }
 
     query = query.range(offset, offset + limit - 1)
@@ -42,19 +56,19 @@ export async function GET(request: NextRequest) {
 
     const grievances = (data || []).map((row: any) => ({
       id: row.id,
-      pseudonym: row.anonymous_token.substring(0, 8), // Use first 8 chars of token as pseudonym
+      pseudonym: row.anonymous_token.substring(0, 8),
       title: row.title,
       body: row.description,
       category: row.category,
-      tags: [], // Tags not in DB schema, return empty array
-      severity: 3, // Default severity since not in schema
+      tags: [],
+      severity: 3,
       status: row.status,
       impact: row.impact,
       frequency: row.frequency,
       score: row.upvotes - row.downvotes,
       up: row.upvotes,
       down: row.downvotes,
-      reactions: {}, // Reactions stored separately, return empty for now
+      reactions: {},
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }))
