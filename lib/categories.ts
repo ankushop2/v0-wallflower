@@ -1,21 +1,16 @@
 // Predefined categories and tags for grievances
 
 export const categories = [
-  "Time Management",
-  "Equipment",
-  "Career Development",
-  "Compensation",
-  "Work Environment",
-  "Communication",
-  "Tools & Software",
-  "Process",
-  "Culture",
-  "Health & Safety",
-  "Remote Work",
-  "Team Dynamics",
-  "Leadership",
-  "Training",
-  "Other",
+  "facilities",
+  "compensation",
+  "management",
+  "safety",
+  "workload",
+  "discrimination",
+  "communication",
+  "benefits",
+  "equipment",
+  "other",
 ] as const
 
 export const CATEGORIES = categories
