@@ -119,13 +119,19 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error
 
-    // Webhooks will be fired again on approval if it goes to moderation
-    fireWebhooks(data, category).catch((err) => console.error("[v0] Failed to fire webhooks:", err))
+    console.log(`[v0] Grievance created with ID: ${data.id}, firing webhooks...`)
+
+    // If it needs moderation, webhooks fire now to notify about pending grievance
+    // When approved, webhooks will fire again with updated status
+    fireWebhooks(data, category).catch((err) => {
+      console.error("[v0] Failed to fire webhooks:", err)
+      console.error("[v0] Webhook error stack:", err.stack)
+    })
 
     if (needsModeration) {
-      console.log(`[v0] Grievance sent to moderation, webhooks will fire on approval`)
+      console.log(`[v0] Grievance sent to moderation, webhooks fired for pending status`)
     } else {
-      console.log(`[v0] Grievance published directly`)
+      console.log(`[v0] Grievance published directly, webhooks fired`)
     }
 
     return NextResponse.json(
