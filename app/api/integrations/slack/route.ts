@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Get all webhook integrations for the current user
     const { data, error } = await supabase
       .from("webhook_integrations")
       .select("*")
