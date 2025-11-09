@@ -10,7 +10,13 @@ import type {
   RoutingRuleUpsertRequest,
 } from "./types"
 
-const API_BASE_URL = "" // Empty string means relative URLs to same Next.js app
+// Use empty string for same-domain API calls (Next.js app router)
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL &&
+  process.env.NEXT_PUBLIC_API_URL !== "true" &&
+  process.env.NEXT_PUBLIC_API_URL !== "false"
+    ? process.env.NEXT_PUBLIC_API_URL
+    : ""
 
 export class APIClient {
   private static async getAuthToken(): Promise<string | null> {
