@@ -5,7 +5,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { LeaderboardTabs } from "@/components/leaderboard-tabs"
-import { PlusIcon, SettingsIcon, LogOutIcon } from "lucide-react"
+import { ComposePanel } from "@/components/compose-panel"
+import { SettingsIcon, LogOutIcon } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 
 export default function HomePage() {
@@ -61,13 +62,6 @@ export default function HomePage() {
                   <LogOutIcon className="h-4 w-4" />
                   <span className="sr-only">Logout</span>
                 </Button>
-                <Link href="/new">
-                  <Button className="gap-2">
-                    <PlusIcon className="h-4 w-4" />
-                    <span className="hidden sm:inline">New Grievance</span>
-                    <span className="sm:hidden">New</span>
-                  </Button>
-                </Link>
               </>
             ) : (
               <Link href="/auth/login">
@@ -81,9 +75,22 @@ export default function HomePage() {
       {/* Main Content */}
       <main className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold tracking-tight text-balance">Workplace Grievances</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-balance">Share Your Concern</h2>
           <p className="mt-2 text-muted-foreground text-pretty">
-            Share concerns anonymously and track resolutions transparently. Your voice matters.
+            Your submission is completely anonymous. Share concerns and track resolutions transparently. Your voice matters.
+          </p>
+        </div>
+
+        {/* Grievance Form */}
+        <div className="mb-12">
+          <ComposePanel />
+        </div>
+
+        {/* Grievances List */}
+        <div className="mb-8">
+          <h3 className="text-2xl font-bold tracking-tight text-balance mb-2">Recent Grievances</h3>
+          <p className="text-muted-foreground text-pretty">
+            View and engage with workplace concerns from the community.
           </p>
         </div>
 
