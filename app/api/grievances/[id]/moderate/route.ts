@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
+import { fireWebhooks } from "@/lib/webhooks"
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -40,6 +41,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         .single()
 
       if (error) throw error
+
+      if (data) {
+        fireWebhooks(data, data.category).catch((err) => console.error("[v0] Failed to fire webhooks:", err))
+      }
 
       return NextResponse.json({ success: true, grievance: data })
     } else if (action === "reject") {

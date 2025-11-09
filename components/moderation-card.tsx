@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { Grievance } from "@/lib/types"
-import { CheckIcon, XIcon, MessageSquareIcon, GitMergeIcon, UsersIcon } from "lucide-react"
+import { CheckIcon, XIcon, MessageSquareIcon, GitMergeIcon, UsersIcon, Trash2Icon } from "lucide-react"
 import { safeFormatDistanceToNow } from "@/lib/date-utils"
 import Link from "next/link"
 
@@ -74,6 +74,29 @@ export function ModerationCard({ grievance, isSelected, onToggleSelect, onAction
     console.log("Set owner:", grievance.id)
   }
 
+  const handleDelete = async () => {
+    if (!confirm("Are you sure you want to permanently delete this grievance? This action cannot be undone.")) {
+      return
+    }
+
+    setIsProcessing(true)
+    try {
+      const response = await fetch(`/api/grievances/${grievance.id}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) throw new Error("Failed to delete")
+
+      console.log("[v0] Deleted:", grievance.id)
+      onActionComplete?.()
+    } catch (error) {
+      console.error("[v0] Delete error:", error)
+      alert("Failed to delete grievance. Please try again.")
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
   return (
     <Card className={`p-6 transition-colors ${isSelected ? "border-primary" : ""}`}>
       <div className="flex gap-4">
@@ -138,6 +161,16 @@ export function ModerationCard({ grievance, isSelected, onToggleSelect, onAction
             <Button variant="outline" size="sm" onClick={handleSetOwner} className="gap-2 bg-transparent">
               <UsersIcon className="h-4 w-4" />
               Set Owner
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDelete}
+              disabled={isProcessing}
+              className="gap-2 bg-transparent text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2Icon className="h-4 w-4" />
+              Delete
             </Button>
           </div>
         </div>
