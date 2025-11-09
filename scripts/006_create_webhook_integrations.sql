@@ -87,4 +87,3 @@ CREATE POLICY "Admin and moderators can delete their webhook integrations"
       AND users.role IN ('admin', 'moderator')
     )
   );
-
