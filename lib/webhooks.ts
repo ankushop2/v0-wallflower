@@ -15,21 +15,17 @@ interface WebhookPayload {
 
 /**
  * Fires all active webhooks for a given category
+ * Fire-and-forget: sends webhooks without waiting for responses
  * @param grievance The grievance data to send
  * @param category The category to match webhooks against
  */
 export async function fireWebhooks(grievance: any, category: string) {
   try {
+    console.log(`[v0] fireWebhooks called for category: ${category}, grievance ID: ${grievance.id}`)
+
     const supabase = await createServiceClient()
 
-    console.log(`[v0] Checking webhooks for category: ${category}`)
-
-    // Fetch all active webhooks for this category
-    const { data: webhooks, error } = await supabase
-      .from("webhook_integrations")
-      .select("*")
-      .eq("category", category)
-      .eq("is_active", true)
+    const { data: webhooks, error } = await supabase.from("webhook_integrations").select("*").eq("is_active", true)
 
     if (error) {
       console.error("[v0] Error fetching webhooks:", error)
@@ -37,11 +33,18 @@ export async function fireWebhooks(grievance: any, category: string) {
     }
 
     if (!webhooks || webhooks.length === 0) {
-      console.log(`[v0] No active webhooks found for category: ${category}`)
+      console.log(`[v0] No active webhooks found in database`)
       return
     }
 
-    console.log(`[v0] Found ${webhooks.length} webhook(s) for category: ${category}`)
+    const matchingWebhooks = webhooks.filter((webhook) => webhook.category === category || webhook.category === "all")
+
+    if (matchingWebhooks.length === 0) {
+      console.log(`[v0] No webhooks match category: ${category} (found ${webhooks.length} total webhooks)`)
+      return
+    }
+
+    console.log(`[v0] Found ${matchingWebhooks.length} matching webhook(s) for category: ${category}`)
 
     // Prepare the webhook payload
     const payload: WebhookPayload = {
@@ -57,36 +60,32 @@ export async function fireWebhooks(grievance: any, category: string) {
       pseudonym: grievance.anonymous_token.substring(0, 8),
     }
 
-    // Fire all webhooks in parallel
-    const webhookPromises = webhooks.map(async (webhook) => {
-      try {
-        console.log(`[v0] Firing webhook: ${webhook.name} (${webhook.webhook_url})`)
+    matchingWebhooks.forEach((webhook) => {
+      console.log(`[v0] Firing webhook: ${webhook.name} to ${webhook.webhook_url}`)
 
-        const response = await fetch(webhook.webhook_url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            event: "grievance.created",
-            data: payload,
-            webhook_name: webhook.name,
-            timestamp: new Date().toISOString(),
-          }),
-        })
-
-        if (!response.ok) {
-          console.error(`[v0] Webhook ${webhook.name} failed with status ${response.status}`)
-        } else {
+      fetch(webhook.webhook_url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          event: "grievance.published",
+          data: payload,
+          webhook_name: webhook.name,
+          timestamp: new Date().toISOString(),
+        }),
+        mode: "no-cors",
+      })
+        .then(() => {
           console.log(`[v0] Webhook ${webhook.name} fired successfully`)
-        }
-      } catch (error: any) {
-        console.error(`[v0] Error firing webhook ${webhook.name}:`, error.message)
-      }
+        })
+        .catch((error) => {
+          // Silently log errors but don't block execution
+          console.log(`[v0] Webhook ${webhook.name} attempted (error ignored):`, error.message)
+        })
     })
 
-    // Wait for all webhooks to complete (don't block the response though)
-    await Promise.allSettled(webhookPromises)
+    console.log(`[v0] All ${matchingWebhooks.length} webhooks dispatched (fire-and-forget)`)
   } catch (error: any) {
     console.error("[v0] Error in fireWebhooks:", error.message)
   }

@@ -23,6 +23,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop trigger if exists before creating to make script idempotent
+DROP TRIGGER IF EXISTS trigger_update_webhook_integration_updated_at ON public.webhook_integrations;
+
 -- Create trigger to automatically update updated_at
 CREATE TRIGGER trigger_update_webhook_integration_updated_at
   BEFORE UPDATE ON public.webhook_integrations
@@ -31,6 +34,12 @@ CREATE TRIGGER trigger_update_webhook_integration_updated_at
 
 -- Enable Row Level Security
 ALTER TABLE public.webhook_integrations ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies before recreating to make script idempotent
+DROP POLICY IF EXISTS "Admin and moderators can view webhook integrations" ON public.webhook_integrations;
+DROP POLICY IF EXISTS "Admin and moderators can create webhook integrations" ON public.webhook_integrations;
+DROP POLICY IF EXISTS "Admin and moderators can update their webhook integrations" ON public.webhook_integrations;
+DROP POLICY IF EXISTS "Admin and moderators can delete their webhook integrations" ON public.webhook_integrations;
 
 -- Create RLS policies
 -- Admin and moderators can view all integrations

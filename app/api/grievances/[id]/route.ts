@@ -6,11 +6,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params
     const supabase = await createClient()
 
-    const { data, error } = await supabase.from("grievances").select("*").eq("id", id).single()
+    const { data, error } = await supabase.from("grievances").select("*").eq("id", id).maybeSingle()
 
     if (error) throw error
 
-    // Transform database row to match frontend types
+    if (!data) {
+      return NextResponse.json({ error: "Grievance not found" }, { status: 404 })
+    }
+
     const grievance = {
       id: data.id,
       title: data.title,
@@ -42,7 +45,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const supabase = await createClient()
     const body = await request.json()
 
-    // Check if user is admin/moderator
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -50,9 +52,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { data, error } = await supabase.from("grievances").update(body).eq("id", id).select().single()
+    const { data, error } = await supabase.from("grievances").update(body).eq("id", id).select().maybeSingle()
 
     if (error) throw error
+
+    if (!data) {
+      return NextResponse.json({ error: "Grievance not found" }, { status: 404 })
+    }
 
     return NextResponse.json({ grievance: data })
   } catch (error: any) {
@@ -65,7 +71,6 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const { id } = await params
     const supabase = await createClient()
 
-    // Check if user is admin/moderator
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -73,14 +78,12 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Verify user is moderator or admin
-    const { data: userData } = await supabase.from("users").select("role").eq("id", user.id).single()
+    const { data: userData } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle()
 
     if (!userData || (userData.role !== "moderator" && userData.role !== "admin")) {
       return NextResponse.json({ error: "Forbidden - Moderator access required" }, { status: 403 })
     }
 
-    // Delete the grievance
     const { error } = await supabase.from("grievances").delete().eq("id", id)
 
     if (error) throw error

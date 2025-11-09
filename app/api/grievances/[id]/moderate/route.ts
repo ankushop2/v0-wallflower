@@ -43,6 +43,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       if (error) throw error
 
       if (data) {
+        console.log(`[v0] Grievance approved, firing webhooks for category: ${data.category}`)
         fireWebhooks(data, data.category).catch((err) => console.error("[v0] Failed to fire webhooks:", err))
       }
 

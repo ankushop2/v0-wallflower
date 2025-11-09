@@ -67,6 +67,8 @@ export function BlindDmDrawer({
 
     setIsSending(true)
     try {
+      console.log("[v0] Sending message to grievance:", grievanceId)
+
       const response = await fetch(`/api/grievances/${grievanceId}/messages`, {
         method: "POST",
         headers: {
@@ -80,10 +82,13 @@ export function BlindDmDrawer({
       })
 
       if (!response.ok) {
-        throw new Error("Failed to send message")
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+        console.error("[v0] Failed to send message:", response.status, errorData)
+        throw new Error(errorData.error || "Failed to send message")
       }
 
       const data = await response.json()
+      console.log("[v0] Message sent successfully:", data.message)
 
       // Add new message to local state
       const updatedMessages = [...messages, data.message]
@@ -96,6 +101,7 @@ export function BlindDmDrawer({
       setNewMessage("")
     } catch (error) {
       console.error("[v0] Error sending message:", error)
+      alert(error instanceof Error ? error.message : "Failed to send message. Please try again.")
     } finally {
       setIsSending(false)
     }

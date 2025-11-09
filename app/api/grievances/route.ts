@@ -87,6 +87,8 @@ export async function POST(request: NextRequest) {
 
     const { title, description, category, impact, frequency, anonymous_token, needsModeration, moderationReason } = body
 
+    console.log(`[v0] Creating grievance - needsModeration: ${needsModeration}, category: ${category}`)
+
     // Ensure anonymous token exists
     const { data: tokenData, error: tokenError } = await supabase
       .from("anonymous_tokens")
@@ -117,9 +119,13 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error
 
-    if (!needsModeration) {
-      // Fire webhooks asynchronously (don't wait for completion)
-      fireWebhooks(data, category).catch((err) => console.error("[v0] Failed to fire webhooks:", err))
+    // Webhooks will be fired again on approval if it goes to moderation
+    fireWebhooks(data, category).catch((err) => console.error("[v0] Failed to fire webhooks:", err))
+
+    if (needsModeration) {
+      console.log(`[v0] Grievance sent to moderation, webhooks will fire on approval`)
+    } else {
+      console.log(`[v0] Grievance published directly`)
     }
 
     return NextResponse.json(
