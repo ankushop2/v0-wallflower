@@ -101,6 +101,38 @@ export function ComposePanel() {
     }
   }
 
+  const handleDirectSubmit = async () => {
+    if (!title || !body) return
+
+    setIsSubmitting(true)
+
+    try {
+      const anonymousToken = getAnonymousToken()
+
+      await APIClient.createGrievance({
+        title,
+        description: body,
+        category: "other",
+        impact: "medium",
+        frequency: "occasional",
+        anonymous_token: anonymousToken,
+      })
+
+      const generatedPseudonym = `Anon-${anonymousToken.slice(-4)}`
+      setPseudonym(generatedPseudonym)
+      setSubmitted(true)
+
+      setTimeout(() => {
+        router.push("/")
+      }, 3000)
+    } catch (err) {
+      console.error("[v0] Error submitting grievance:", err)
+      alert("Failed to submit grievance. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleAcceptAndSubmit = async () => {
     if (!aiSuggestions) return
 
@@ -187,7 +219,16 @@ export function ComposePanel() {
           />
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex flex-col sm:flex-row gap-3 justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleDirectSubmit}
+            disabled={!title || !body || isLoadingAI || showSuggestions || isSubmitting}
+          >
+            {isSubmitting && <Loader2Icon className="h-4 w-4 animate-spin mr-2" />}
+            Submit Without AI
+          </Button>
           <Button
             type="button"
             onClick={handleGetAISuggestions}

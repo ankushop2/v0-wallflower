@@ -1,13 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import type { BlindMessage } from "@/lib/types"
-import { formatDistanceToNow } from "date-fns"
+import { safeFormatDistanceToNow } from "@/lib/date-utils"
 import { SendIcon, ShieldIcon, UserIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { getAnonymousToken } from "@/lib/anonymous-token"
 
 interface BlindDmDrawerProps {
   open: boolean
@@ -15,20 +16,89 @@ interface BlindDmDrawerProps {
   messages: BlindMessage[]
   grievanceId: string
   posterPseudonym: string
+  onMessagesUpdate?: (messages: BlindMessage[]) => void
 }
 
-export function BlindDmDrawer({ open, onOpenChange, messages, grievanceId, posterPseudonym }: BlindDmDrawerProps) {
+export function BlindDmDrawer({
+  open,
+  onOpenChange,
+  messages: initialMessages,
+  grievanceId,
+  posterPseudonym,
+  onMessagesUpdate,
+}: BlindDmDrawerProps) {
   const [newMessage, setNewMessage] = useState("")
   const [isSending, setIsSending] = useState(false)
+  const [messages, setMessages] = useState<BlindMessage[]>(initialMessages)
+  const [anonymousToken, setAnonymousToken] = useState<string>("")
+
+  useEffect(() => {
+    setAnonymousToken(getAnonymousToken())
+  }, [])
+
+  useEffect(() => {
+    if (open) {
+      fetchMessages()
+    }
+  }, [open, grievanceId])
+
+  useEffect(() => {
+    setMessages(initialMessages)
+  }, [initialMessages])
+
+  const fetchMessages = async () => {
+    try {
+      const response = await fetch(`/api/grievances/${grievanceId}/messages`)
+      if (!response.ok) throw new Error("Failed to fetch messages")
+
+      const data = await response.json()
+      setMessages(data.messages || [])
+
+      if (onMessagesUpdate) {
+        onMessagesUpdate(data.messages || [])
+      }
+    } catch (error) {
+      console.error("[v0] Error fetching messages:", error)
+    }
+  }
 
   const handleSend = async () => {
     if (!newMessage.trim()) return
 
     setIsSending(true)
-    // Simulate sending
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    setNewMessage("")
-    setIsSending(false)
+    try {
+      const response = await fetch(`/api/grievances/${grievanceId}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: newMessage,
+          anonymous_token: anonymousToken,
+          is_from_moderator: false,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to send message")
+      }
+
+      const data = await response.json()
+
+      // Add new message to local state
+      const updatedMessages = [...messages, data.message]
+      setMessages(updatedMessages)
+
+      if (onMessagesUpdate) {
+        onMessagesUpdate(updatedMessages)
+      }
+
+      setNewMessage("")
+    } catch (error) {
+      console.error("[v0] Error sending message:", error)
+    } finally {
+      setIsSending(false)
+    }
   }
 
   return (
@@ -66,7 +136,7 @@ export function BlindDmDrawer({ open, onOpenChange, messages, grievanceId, poste
           />
           <Button onClick={handleSend} disabled={!newMessage.trim() || isSending} className="w-full gap-2">
             <SendIcon className="h-4 w-4" />
-            Send Message
+            {isSending ? "Sending..." : "Send Message"}
           </Button>
         </div>
       </SheetContent>
@@ -98,7 +168,7 @@ function MessageBubble({ message, posterPseudonym }: MessageBubbleProps) {
             {isPoster ? posterPseudonym : message.from === "moderator" ? "Moderator" : "Team Owner"}
           </Badge>
           <time className="text-xs text-muted-foreground">
-            {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
+            {safeFormatDistanceToNow(message.createdAt, { addSuffix: true })}
           </time>
         </div>
         <div
