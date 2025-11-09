@@ -1,9 +1,9 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowLeftIcon } from "lucide-react"
-import { AnalyticsDashboard } from "@/components/analytics-dashboard"
+import { SettingsIntegrations } from "@/components/settings-integrations"
 
-export default function AnalyticsPage() {
+export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -19,20 +19,21 @@ export default function AnalyticsPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <span className="font-bold text-sm">WF</span>
             </div>
-            <h1 className="text-xl font-semibold">Analytics</h1>
+            <h1 className="text-xl font-semibold">Settings</h1>
           </div>
         </div>
       </header>
 
       <main className="container px-4 py-8">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold tracking-tight text-balance">Platform Analytics</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-balance">Integrations</h2>
           <p className="mt-2 text-muted-foreground text-pretty">
-            Track grievance trends, response times, and resolution patterns.
+            Connect WallFlower to your existing tools and workflows.
           </p>
         </div>
-        <AnalyticsDashboard />
+        <SettingsIntegrations />
       </main>
     </div>
   )
 }
+
