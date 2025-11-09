@@ -254,16 +254,21 @@ export async function POST(req: Request) {
 
 You have access to tools that query the live database. Use them to provide accurate, up-to-date information.
 
-When providing information:
-- Be concise and actionable
-- Highlight urgent items (high severity, pending long time)
-- Suggest next steps for moderators
-- Use data to support recommendations
-- ALWAYS provide a text response that explains the tool results in a conversational way
+CRITICAL INSTRUCTIONS:
+- When you use tools, you MUST follow up with a conversational text response that explains the results
+- Never end your response after calling a tool without providing analysis
+- Synthesize the tool outputs into helpful, actionable insights for moderators
+- If a tool returns 0 results, explain what that means and suggest alternatives
+- Be concise but always provide context and interpretation of the data
 
-Remember: You're assisting moderators in maintaining platform quality and responding to workplace concerns.`,
+Example flow:
+1. User asks: "How many facilities grievances?"
+2. You call searchGrievances or getGrievancesByCategory
+3. You MUST then say something like: "Based on the data, there are 7 facilities grievances. This represents the highest category of issues..."
+
+Remember: You're assisting moderators in maintaining platform quality and responding to workplace concerns. Always complete your thoughts after using tools.`,
       tools,
-      maxSteps: 15, // Increase maxSteps to ensure AI generates final text response after tool calls
+      maxSteps: 10,
     })
 
     return result.toUIMessageStreamResponse()
