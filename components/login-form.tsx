@@ -47,7 +47,7 @@ export function LoginForm() {
 
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      window.location.href = "/moderation"
+      window.location.href = "/"
     } catch (err: any) {
       setError(err.message || "Login failed")
       setLoading(false)
@@ -94,7 +94,7 @@ export function LoginForm() {
             />
           </div>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="pt-2">
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />}
             Sign In
