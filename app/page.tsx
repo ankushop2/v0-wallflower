@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { LeaderboardTabs } from "@/components/leaderboard-tabs"
+import { ComposePanel } from "@/components/compose-panel"
 import { PlusIcon, SettingsIcon, LogOutIcon } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 
@@ -80,14 +81,26 @@ export default function HomePage() {
 
       {/* Main Content */}
       <main className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        <section className="mb-12">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold tracking-tight text-balance mb-2">Share Your Concern</h2>
+            <p className="text-muted-foreground text-pretty max-w-2xl mx-auto">
+              Submit your workplace concern anonymously. Our AI will help you improve your message and check for similar
+              issues.
+            </p>
+          </div>
+          <ComposePanel />
+        </section>
+
         <div className="mb-8">
-          <h2 className="text-3xl font-bold tracking-tight text-balance">Workplace Grievances</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-balance">Recent Grievances</h2>
           <p className="mt-2 text-muted-foreground text-pretty">
-            Share concerns anonymously and track resolutions transparently. Your voice matters.
+            Browse and support concerns from your colleagues. Track resolutions transparently.
           </p>
         </div>
 
         <Suspense fallback={<div className="flex items-center justify-center py-12">Loading...</div>}>
+          {/* Leaderboard */}
           <LeaderboardTabs />
         </Suspense>
       </main>
