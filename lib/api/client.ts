@@ -191,4 +191,26 @@ export class APIClient {
       body: JSON.stringify({ reason }),
     })
   }
+
+  static async voteGrievance(
+    id: string,
+    req: { type: "up" | "down" | "unvote"; anonymous_token: string },
+  ): Promise<{ up: number; down: number; score: number }> {
+    return this.request(`/api/grievances/${id}/vote`, {
+      method: "POST",
+      body: JSON.stringify(req),
+    })
+  }
+
+  static async reactToGrievance(
+    id: string,
+    req: { emoji: string; anonymous_token: string },
+  ): Promise<{ message: string }> {
+    return this.request(`/api/grievances/${id}/react`, {
+      method: "POST",
+      body: JSON.stringify(req),
+    })
+  }
 }
+
+export const apiClient = APIClient

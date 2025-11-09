@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -10,6 +10,8 @@ import { ReactionBar } from "@/components/reaction-bar"
 import type { Grievance } from "@/lib/types"
 import { MessageSquareIcon, ClockIcon } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
+import { getAnonymousToken } from "@/lib/anonymous-token"
+import { apiClient } from "@/lib/api/client"
 
 interface GrievanceCardProps {
   grievance: Grievance
@@ -19,9 +21,23 @@ interface GrievanceCardProps {
 export function GrievanceCard({ grievance, compact = false }: GrievanceCardProps) {
   const [localUp, setLocalUp] = useState(grievance.up)
   const [localDown, setLocalDown] = useState(grievance.down)
+  const [localReactions, setLocalReactions] = useState<Record<string, number>>(grievance.reactions || {})
   const [userVote, setUserVote] = useState<"up" | "down" | null>(null)
+  const [anonymousToken, setAnonymousToken] = useState<string>("")
 
-  const handleVote = (type: "up" | "down") => {
+  useEffect(() => {
+    const token = getAnonymousToken()
+    setAnonymousToken(token)
+  }, [])
+
+  const handleVote = async (type: "up" | "down") => {
+    if (!anonymousToken) return
+
+    const previousUp = localUp
+    const previousDown = localDown
+    const previousVote = userVote
+
+    // Optimistic UI update
     if (userVote === type) {
       // Remove vote
       if (type === "up") {
@@ -47,11 +63,55 @@ export function GrievanceCard({ grievance, compact = false }: GrievanceCardProps
       }
       setUserVote(type)
     }
+
+    // Call API
+    try {
+      await apiClient.voteGrievance(grievance.id, {
+        type: userVote === type ? "unvote" : type,
+        anonymous_token: anonymousToken,
+      })
+    } catch (error) {
+      console.error("[v0] Error voting:", error)
+      // Revert optimistic update on error
+      setLocalUp(previousUp)
+      setLocalDown(previousDown)
+      setUserVote(previousVote)
+    }
   }
 
-  const handleReact = (emoji: string) => {
-    // In real app, this would update server
-    console.log("React with", emoji)
+  const handleReact = async (emoji: string) => {
+    if (!anonymousToken) return
+
+    const previousReactions = { ...localReactions }
+
+    // Optimistic UI update
+    const currentCount = localReactions[emoji] || 0
+    const newReactions = { ...localReactions }
+
+    if (currentCount > 0) {
+      // Toggle off - decrement
+      newReactions[emoji] = Math.max(0, currentCount - 1)
+      if (newReactions[emoji] === 0) {
+        delete newReactions[emoji]
+      }
+    } else {
+      // Toggle on - increment
+      newReactions[emoji] = currentCount + 1
+    }
+
+    setLocalReactions(newReactions)
+
+    // Call API
+    try {
+      await apiClient.reactToGrievance(grievance.id, {
+        emoji,
+        anonymous_token: anonymousToken,
+      })
+    } catch (error) {
+      console.error("[v0] Error reacting:", error)
+      // Revert optimistic update on error
+      setLocalReactions(previousReactions)
+    }
   }
 
   const getTimeAgo = () => {
@@ -114,7 +174,7 @@ export function GrievanceCard({ grievance, compact = false }: GrievanceCardProps
 
           {/* Footer */}
           <div className="flex items-center justify-between pt-2">
-            <ReactionBar reactions={grievance.reactions || {}} onReact={handleReact} />
+            <ReactionBar reactions={localReactions} onReact={handleReact} />
 
             <Link
               href={`/thread/${grievance.id}`}
