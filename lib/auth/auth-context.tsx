@@ -1,54 +1,90 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import type { User } from "@/lib/api/types"
-import { decodeMockJWT } from "./jwt-mock"
+import { createClient } from "@/lib/supabase/client"
+import type { User as SupabaseUser } from "@supabase/supabase-js"
+
+interface User {
+  id: string
+  email: string
+  role: "admin" | "moderator"
+  name?: string
+}
 
 interface AuthContextType {
   user: User | null
-  token: string | null
-  login: (token: string, user: User) => void
-  logout: () => void
+  supabaseUser: SupabaseUser | null
+  login: () => Promise<void>
+  logout: () => Promise<void>
   isAuthenticated: boolean
   hasRole: (roles: string[]) => boolean
+  loading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [token, setToken] = useState<string | null>(null)
+  const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null)
+  const [loading, setLoading] = useState(true)
+  const supabase = createClient()
 
   useEffect(() => {
-    // Load from localStorage on mount
-    const storedToken = localStorage.getItem("auth_token")
-    const storedUser = localStorage.getItem("auth_user")
-
-    if (storedToken && storedUser) {
-      const payload = decodeMockJWT(storedToken)
-      if (payload) {
-        setToken(storedToken)
-        setUser(JSON.parse(storedUser))
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSupabaseUser(session?.user ?? null)
+      if (session?.user) {
+        loadUserProfile(session.user.id)
       } else {
-        // Token expired
-        localStorage.removeItem("auth_token")
-        localStorage.removeItem("auth_user")
+        setLoading(false)
       }
-    }
+    })
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSupabaseUser(session?.user ?? null)
+      if (session?.user) {
+        loadUserProfile(session.user.id)
+      } else {
+        setUser(null)
+        setLoading(false)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
-  const login = (newToken: string, newUser: User) => {
-    setToken(newToken)
-    setUser(newUser)
-    localStorage.setItem("auth_token", newToken)
-    localStorage.setItem("auth_user", JSON.stringify(newUser))
+  const loadUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
+
+      if (error) throw error
+
+      setUser({
+        id: data.id,
+        email: data.email,
+        role: data.role,
+        name: data.name,
+      })
+    } catch (error) {
+      console.error("Error loading user profile:", error)
+      setUser(null)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const logout = () => {
-    setToken(null)
+  const login = async () => {
+    // Refresh session
+    await supabase.auth.getSession()
+  }
+
+  const logout = async () => {
+    await supabase.auth.signOut()
     setUser(null)
-    localStorage.removeItem("auth_token")
-    localStorage.removeItem("auth_user")
+    setSupabaseUser(null)
   }
 
   const hasRole = (roles: string[]) => {
@@ -60,11 +96,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        token,
+        supabaseUser,
         login,
         logout,
-        isAuthenticated: !!user && !!token,
+        isAuthenticated: !!user && !!supabaseUser,
         hasRole,
+        loading,
       }}
     >
       {children}
