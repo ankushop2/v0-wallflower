@@ -1,4 +1,13 @@
-import { streamText, tool } from "ai"
+import {
+  convertToModelMessages,
+  type InferUITools,
+  stepCountIs,
+  streamText,
+  tool,
+  type UIDataTypes,
+  type UIMessage,
+  validateUIMessages,
+} from "ai"
 import { z } from "zod"
 import { createServiceClient } from "@/lib/supabase/server"
 
@@ -93,7 +102,6 @@ const getGrievanceByIdTool = tool({
     if (error) throw error
     if (!data) return { error: "Grievance not found" }
 
-    // Get vote count
     const { data: votes } = await supabase.from("votes").select("vote_type").eq("grievance_id", grievanceId)
 
     const upvotes = votes?.filter((v) => v.vote_type === "up").length || 0
@@ -233,41 +241,30 @@ const tools = {
   getRecentActivity: getRecentActivityTool,
   getModeratorWorkload: getModeratorWorkloadTool,
   getWebhookStatus: getWebhookStatusTool,
-}
+} as const
+
+export type ModeratorCopilotMessage = UIMessage<never, UIDataTypes, InferUITools<typeof tools>>
 
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json()
+    const body = await req.json()
 
-    console.log("[v0] Copilot request with", messages.length, "messages")
+    console.log("[v0] Copilot request with", body.messages?.length || 0, "messages")
+
+    const messages = await validateUIMessages<ModeratorCopilotMessage>({
+      messages: body.messages,
+      tools,
+    })
 
     const result = streamText({
       model: "anthropic/claude-sonnet-4.5",
-      messages,
+      messages: convertToModelMessages(messages),
+      stopWhen: stepCountIs(10),
       system: `You are an AI copilot assistant for WallFlower moderators. Your role is to help moderators manage and understand the grievances on the platform.
 
-**CRITICAL: YOU MUST ALWAYS RESPOND WITH TEXT**
-After calling ANY tool, you MUST write a conversational response that:
-1. Summarizes what you found
-2. Explains what it means
-3. Provides insights or recommendations
+When you call tools, you MUST follow up with a conversational text response that explains the results in a human-friendly way.
 
-**EXAMPLE RESPONSES:**
-User: "tell me all grievances related to facilities"
-You call searchGrievances → gets 0 results
-YOU MUST RESPOND: "I searched for grievances containing 'facilities' and found 0 matches in the current database. This could mean there are no facilities issues right now, or they might be categorized differently. Let me check the category breakdown to see if there are any related issues."
-
-User: "show me food related issues"  
-You call searchGrievances → gets 2 results
-YOU MUST RESPOND: "I found 2 food-related grievances:
-
-1. **Request for Improved Food Options and Variety** - An employee is requesting better quality and more variety in workplace food offerings (Facilities category, Status: Open)
-
-2. **Cafeteria closes too early** - The cafeteria closes at 2pm but many work until 6pm with no nearby alternatives. They're requesting extended hours to 5pm (Benefits category, Status: Open)
-
-Both are currently open and haven't been resolved yet. Would you like me to get more details on either issue?"
-
-**YOUR AVAILABLE TOOLS:**
+Your available tools:
 - getPendingGrievances: Count grievances awaiting moderation
 - getGrievancesByCategory: Category statistics
 - searchGrievances: Find by keyword
@@ -277,15 +274,13 @@ Both are currently open and haven't been resolved yet. Would you like me to get 
 - getModeratorWorkload: Workload distribution
 - getWebhookStatus: Active webhooks
 
-Remember: ALWAYS provide conversational text after using tools. Never end with just tool outputs.`,
+Always be helpful, conversational, and provide actionable insights.`,
       tools,
-      maxSteps: 10,
-      experimental_continueSteps: true,
-      onFinish: ({ text, toolCalls, finishReason }) => {
+      onFinish: (options) => {
         console.log("[v0] Copilot finished:", {
-          textLength: text?.length,
-          toolCallsCount: toolCalls?.length,
-          finishReason,
+          textLength: options.text?.length || 0,
+          toolCallsCount: options.toolCalls?.length || 0,
+          finishReason: options.finishReason,
         })
       },
     })

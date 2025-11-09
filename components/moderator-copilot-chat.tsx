@@ -13,15 +13,11 @@ interface Message {
   id: string
   role: "user" | "assistant"
   content: string
-  toolCalls?: Array<{
-    toolName: string
-    input: any
-    output?: any
-  }>
   toolInvocations?: Array<{
     toolCallId: string
-    state: string
-    result?: { message?: string }
+    toolName: string
+    state: "result"
+    result: any
   }>
 }
 
@@ -39,7 +35,6 @@ export function ModeratorCopilotChat() {
   const scrollAreaRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    // Scroll to bottom when messages change
     if (scrollAreaRef.current) {
       const scrollContainer = scrollAreaRef.current.querySelector("[data-radix-scroll-area-viewport]")
       if (scrollContainer) {
@@ -64,15 +59,24 @@ export function ModeratorCopilotChat() {
 
     try {
       const apiMessages = messages.map((m) => ({
+        id: m.id,
         role: m.role,
-        content: m.content,
+        parts: [{ type: "text" as const, text: m.content }],
+        ...(m.toolInvocations && { toolInvocations: m.toolInvocations }),
       }))
 
       const response = await fetch("/api/moderator/copilot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [...apiMessages, { role: "user", content: input }],
+          messages: [
+            ...apiMessages,
+            {
+              id: userMessage.id,
+              role: "user",
+              parts: [{ type: "text" as const, text: input }],
+            },
+          ],
         }),
       })
 
@@ -87,14 +91,14 @@ export function ModeratorCopilotChat() {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: "",
-        toolCalls: [],
+        toolInvocations: [],
       }
 
       setMessages((prev) => [...prev, assistantMessage])
 
       if (reader) {
         let buffer = ""
-        let currentToolCall: { toolName: string; input: any; output?: any } | null = null
+        const toolInvocationMap = new Map<string, any>()
 
         while (true) {
           const { done, value } = await reader.read()
@@ -105,71 +109,55 @@ export function ModeratorCopilotChat() {
           buffer = lines.pop() || ""
 
           for (const line of lines) {
-            if (!line.trim()) continue
-
-            console.log("[v0] Stream line:", line)
+            if (!line.trim() || line === "data: [DONE]") continue
 
             let lineContent = line
             if (line.startsWith("data: ")) {
               lineContent = line.slice(6)
-            } else if (line.startsWith("0:")) {
-              lineContent = line.slice(2)
             }
-
-            if (lineContent === "[DONE]") continue
 
             try {
               const parsed = JSON.parse(lineContent)
-              console.log("[v0] Parsed chunk:", parsed)
 
-              if (parsed.type === "tool-input-available") {
-                currentToolCall = {
-                  toolName: parsed.toolName,
-                  input: parsed.input,
-                }
-                console.log("[v0] Tool invoked:", parsed.toolName)
-              } else if (parsed.type === "tool-output-available") {
-                if (currentToolCall) {
-                  currentToolCall.output = parsed.output
-                  assistantMessage.toolCalls = [...(assistantMessage.toolCalls || []), currentToolCall]
-                  setMessages((prev) => {
-                    const newMessages = [...prev]
-                    newMessages[newMessages.length - 1] = { ...assistantMessage }
-                    return newMessages
-                  })
-                  console.log("[v0] Tool result:", parsed.output)
-                  currentToolCall = null
-                }
-              } else if (parsed.type === "text-delta" && parsed.delta) {
+              if (parsed.type === "text-delta" && parsed.delta) {
+                // Text streaming
                 assistantMessage.content += parsed.delta
                 setMessages((prev) => {
                   const newMessages = [...prev]
                   newMessages[newMessages.length - 1] = { ...assistantMessage }
                   return newMessages
                 })
-              } else if (parsed.textDelta) {
-                assistantMessage.content += parsed.textDelta
-                setMessages((prev) => {
-                  const newMessages = [...prev]
-                  newMessages[newMessages.length - 1] = { ...assistantMessage }
-                  return newMessages
+              } else if (parsed.type === "tool-input-available") {
+                // Tool is being called
+                toolInvocationMap.set(parsed.toolCallId, {
+                  toolCallId: parsed.toolCallId,
+                  toolName: parsed.toolName,
+                  state: "loading",
+                  input: parsed.input,
                 })
-              } else if (typeof parsed === "string") {
-                assistantMessage.content += parsed
-                setMessages((prev) => {
-                  const newMessages = [...prev]
-                  newMessages[newMessages.length - 1] = { ...assistantMessage }
-                  return newMessages
-                })
+                console.log("[v0] Tool called:", parsed.toolName, parsed.input)
+              } else if (parsed.type === "tool-output-available") {
+                // Tool result available
+                const existing = toolInvocationMap.get(parsed.toolCallId)
+                if (existing) {
+                  toolInvocationMap.set(parsed.toolCallId, {
+                    ...existing,
+                    state: "result",
+                    result: parsed.output,
+                  })
+                  assistantMessage.toolInvocations = Array.from(toolInvocationMap.values())
+                  setMessages((prev) => {
+                    const newMessages = [...prev]
+                    newMessages[newMessages.length - 1] = { ...assistantMessage }
+                    return newMessages
+                  })
+                  console.log("[v0] Tool result:", parsed.output)
+                }
               }
             } catch (e) {
               console.error("[v0] Parse error:", e, "Line:", lineContent)
             }
           }
-        }
-
-        if (buffer.trim()) {
-          console.log("[v0] Remaining buffer:", buffer)
         }
       }
     } catch (error) {
@@ -216,29 +204,24 @@ export function ModeratorCopilotChat() {
                   }`}
                 >
                   <div className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</div>
-
-                  {message.toolInvocations?.map((toolInvocation) => (
-                    <div key={toolInvocation.toolCallId} className="mt-2 text-xs opacity-70">
-                      {toolInvocation.state === "result" && (
-                        <div className="italic">✓ {toolInvocation.result?.message || "Tool executed"}</div>
-                      )}
-                    </div>
-                  ))}
                 </div>
 
-                {message.toolCalls && message.toolCalls.length > 0 && (
+                {message.toolInvocations && message.toolInvocations.length > 0 && (
                   <div className="space-y-2 w-full">
-                    {message.toolCalls.map((toolCall, idx) => (
-                      <Card key={idx} className="p-3 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                    {message.toolInvocations.map((toolInvocation) => (
+                      <Card
+                        key={toolInvocation.toolCallId}
+                        className="p-3 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800"
+                      >
                         <div className="text-sm">
                           <div className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                            🔧 {toolCall.toolName}
+                            🔧 {toolInvocation.toolName}
                           </div>
-                          {toolCall.output && (
+                          {toolInvocation.state === "result" && toolInvocation.result && (
                             <div className="text-blue-700 dark:text-blue-300 text-xs">
-                              {typeof toolCall.output === "object"
-                                ? toolCall.output.message || JSON.stringify(toolCall.output, null, 2)
-                                : String(toolCall.output)}
+                              {typeof toolInvocation.result === "object"
+                                ? toolInvocation.result.message || JSON.stringify(toolInvocation.result, null, 2)
+                                : String(toolInvocation.result)}
                             </div>
                           )}
                         </div>
