@@ -3,17 +3,29 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { SettingsIcon, LogOutIcon, SparklesIcon } from "lucide-react"
+import { SettingsIcon, LogOutIcon, ArrowLeftIcon } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
-import { ModerationQueue } from "@/components/moderation-queue"
+import { ModeratorCopilotChat } from "@/components/moderator-copilot-chat"
 
-export default function ModerationPage() {
+export default function ModeratorCopilotPage() {
   const router = useRouter()
   const { user, logout, hasRole } = useAuth()
 
   const handleLogout = () => {
     logout()
     router.push("/auth/login")
+  }
+
+  if (!hasRole(["moderator", "owner", "admin"])) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
+          <p className="text-muted-foreground mb-4">This page is only accessible to moderators.</p>
+          <Button onClick={() => router.push("/")}>Go Home</Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -34,12 +46,12 @@ export default function ModerationPage() {
             </Link>
             {user && hasRole(["moderator", "owner", "admin"]) && (
               <>
-                <Link href="/moderation" className="text-sm font-medium text-foreground hover:text-foreground/80">
+                <Link href="/moderation" className="text-sm font-medium text-muted-foreground hover:text-foreground">
                   Moderation
                 </Link>
                 <Link
                   href="/moderation/copilot"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
+                  className="text-sm font-medium text-foreground hover:text-foreground/80"
                 >
                   AI Copilot
                 </Link>
@@ -73,23 +85,21 @@ export default function ModerationPage() {
       </header>
 
       <main className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8 flex items-start justify-between">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight text-balance">Moderation Queue</h2>
-            <p className="mt-2 text-muted-foreground text-pretty">
-              Review and moderate reported grievances to maintain platform quality.
-            </p>
-          </div>
+        <div className="mb-6">
+          <Button variant="ghost" size="sm" className="gap-2 mb-4" onClick={() => router.back()}>
+            <ArrowLeftIcon className="h-4 w-4" />
+            Back to Moderation
+          </Button>
 
-          <Link href="/moderation/copilot">
-            <Button className="gap-2">
-              <SparklesIcon className="h-4 w-4" />
-              AI Copilot
-            </Button>
-          </Link>
+          <h2 className="text-3xl font-bold tracking-tight text-balance">AI Moderator Copilot</h2>
+          <p className="mt-2 text-muted-foreground text-pretty">
+            Chat with your AI assistant to get insights, search grievances, and analyze platform data in real-time.
+          </p>
         </div>
 
-        <ModerationQueue />
+        <div className="max-w-4xl">
+          <ModeratorCopilotChat />
+        </div>
       </main>
     </div>
   )

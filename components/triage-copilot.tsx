@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import type { TriageSuggestion } from "@/lib/types"
-import { SparklesIcon, CheckIcon, TrendingUpIcon, GitMergeIcon, UsersIcon } from "lucide-react"
+import { SparklesIcon, CheckIcon, TrendingUpIcon, GitMergeIcon, UsersIcon, ClockIcon, ListIcon } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 
 interface TriageCopilotProps {
@@ -26,7 +26,7 @@ export function TriageCopilot({ suggestion }: TriageCopilotProps) {
     <Card className="p-6 bg-primary/5 border-primary/20">
       <div className="flex items-center gap-2 mb-6">
         <SparklesIcon className="h-5 w-5 text-primary" />
-        <h2 className="text-lg font-semibold">Triage Copilot</h2>
+        <h2 className="text-lg font-semibold">AI Triage Analysis</h2>
         <Badge variant="secondary" className="ml-auto">
           Moderator View
         </Badge>
@@ -39,6 +39,24 @@ export function TriageCopilot({ suggestion }: TriageCopilotProps) {
           <p className="text-sm text-foreground leading-relaxed text-pretty">{suggestion.tldr}</p>
         </div>
 
+        {suggestion.similarIssuesCount !== undefined && (
+          <>
+            <Separator />
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                <UsersIcon className="h-4 w-4" />
+                Similar Issues from Other Users
+              </h3>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-lg font-semibold px-3 py-1">
+                  ~{suggestion.similarIssuesCount}
+                </Badge>
+                <span className="text-sm text-muted-foreground">users may have experienced similar issues</span>
+              </div>
+            </div>
+          </>
+        )}
+
         {/* Why Trending */}
         {suggestion.whyTrending && (
           <>
@@ -46,9 +64,44 @@ export function TriageCopilot({ suggestion }: TriageCopilotProps) {
             <div>
               <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                 <TrendingUpIcon className="h-4 w-4" />
-                Why Trending
+                Why This Matters
               </h3>
               <p className="text-sm text-foreground text-pretty">{suggestion.whyTrending}</p>
+            </div>
+          </>
+        )}
+
+        {suggestion.suggestedActions && suggestion.suggestedActions.length > 0 && (
+          <>
+            <Separator />
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+                <ListIcon className="h-4 w-4" />
+                Suggested Next Steps
+              </h3>
+              <ul className="space-y-2">
+                {suggestion.suggestedActions.map((action, idx) => (
+                  <li key={idx} className="flex items-start gap-2 text-sm">
+                    <CheckIcon className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                    <span className="text-foreground">{action}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>
+        )}
+
+        {suggestion.estimatedResolutionTime && (
+          <>
+            <Separator />
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                <ClockIcon className="h-4 w-4" />
+                Estimated Resolution Time
+              </h3>
+              <Badge variant="outline" className="text-sm">
+                {suggestion.estimatedResolutionTime}
+              </Badge>
             </div>
           </>
         )}
@@ -75,7 +128,7 @@ export function TriageCopilot({ suggestion }: TriageCopilotProps) {
                       </Badge>
                     </div>
                     <Button variant="outline" size="sm">
-                      Merge
+                      View
                     </Button>
                   </div>
                 ))}

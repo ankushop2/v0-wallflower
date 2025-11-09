@@ -2,11 +2,15 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
 import { fireWebhooks } from "@/lib/webhooks"
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await createServerClient()
     const body = await request.json()
     const { action, reason } = body // action: 'approve' | 'reject'
+
+    const { id: grievanceId } = await params
+
+    console.log(`[v0] Moderating grievance ${grievanceId} with action: ${action}`)
 
     // Check user is authenticated and has moderator role
     const {
@@ -21,8 +25,6 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     if (!userData || !["admin", "moderator", "owner"].includes(userData.role)) {
       return NextResponse.json({ error: "Forbidden - requires moderator role" }, { status: 403 })
     }
-
-    const grievanceId = params.id
 
     if (action === "approve") {
       const { data, error } = await supabase

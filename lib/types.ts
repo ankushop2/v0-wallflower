@@ -99,11 +99,14 @@ export interface RoutingRule {
 
 export interface TriageSuggestion {
   tldr: string
+  similarIssuesCount?: number // Added count of similar issues
   whyTrending?: string
   duplicates?: Array<{ id: string; title: string; similarity: number }>
   suggestedOwners?: string[]
   suggestedChannels?: string[]
   askForInfoDraft?: string
+  suggestedActions?: string[] // Added suggested actions
+  estimatedResolutionTime?: string // Added estimated resolution time
 }
 
 export interface AnalyticsData {
