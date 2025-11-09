@@ -1,6 +1,24 @@
 -- Seed demo grievances for testing and development
 
+-- First, insert demo anonymous tokens
+INSERT INTO anonymous_tokens (token, created_at)
+VALUES
+  ('demo-token-001', NOW() - INTERVAL '3 days'),
+  ('demo-token-002', NOW() - INTERVAL '5 days'),
+  ('demo-token-003', NOW() - INTERVAL '1 week'),
+  ('demo-token-004', NOW() - INTERVAL '2 days'),
+  ('demo-token-005', NOW() - INTERVAL '4 days'),
+  ('demo-token-006', NOW() - INTERVAL '6 days'),
+  ('demo-token-007', NOW() - INTERVAL '8 days'),
+  ('demo-token-008', NOW() - INTERVAL '1 day'),
+  ('demo-token-009', NOW() - INTERVAL '2 weeks'),
+  ('demo-token-010', NOW() - INTERVAL '5 days'),
+  ('demo-token-011', NOW() - INTERVAL '3 days'),
+  ('demo-token-012', NOW() - INTERVAL '7 days')
+ON CONFLICT (token) DO NOTHING;
+
 -- Insert demo grievances with various categories and statuses
+-- Updated frequency values to match schema constraint: once, occasional, frequent, constant
 INSERT INTO grievances (
   title,
   description,
@@ -18,7 +36,7 @@ INSERT INTO grievances (
     'The air conditioning on the 3rd floor of Building B has been broken for over 2 weeks. Temperature regularly exceeds 85°F making it very difficult to work. Multiple complaints have been filed but no action taken.',
     'facilities',
     'high',
-    'daily',
+    'constant',
     'open',
     'demo-token-001',
     42,
@@ -30,7 +48,7 @@ INSERT INTO grievances (
     'Visitor parking passes only last 4 hours. This is not enough time for contractors, consultants, or even family emergencies. Many other companies offer 8-12 hour passes.',
     'policy',
     'medium',
-    'weekly',
+    'frequent',
     'open',
     'demo-token-002',
     28,
@@ -42,7 +60,7 @@ INSERT INTO grievances (
     'The open office area has no standing desk options. This has led to back pain and discomfort for multiple employees. Research shows standing desks improve health and productivity.',
     'facilities',
     'medium',
-    'daily',
+    'constant',
     'in_progress',
     'demo-token-003',
     35,
@@ -54,7 +72,7 @@ INSERT INTO grievances (
     'All conference rooms are constantly booked 2-3 weeks in advance. Small teams have nowhere to meet privately. We need at least 3-4 more small meeting rooms.',
     'facilities',
     'high',
-    'daily',
+    'constant',
     'open',
     'demo-token-004',
     67,
@@ -66,7 +84,7 @@ INSERT INTO grievances (
     'The cafeteria closes at 2pm but many employees work until 6pm or later. There are no nearby food options. Please extend hours to at least 5pm.',
     'benefits',
     'medium',
-    'daily',
+    'constant',
     'open',
     'demo-token-005',
     51,
@@ -78,7 +96,7 @@ INSERT INTO grievances (
     'The Wi-Fi connection in the lounge and outdoor seating areas is extremely slow (< 5 Mbps). This makes it impossible to work remotely from these spaces.',
     'technology',
     'high',
-    'daily',
+    'constant',
     'in_progress',
     'demo-token-006',
     44,
@@ -90,7 +108,7 @@ INSERT INTO grievances (
     'Current bike rack only fits 8 bikes and there is only 1 shower. Many employees want to bike to work but infrastructure is inadequate.',
     'facilities',
     'low',
-    'weekly',
+    'frequent',
     'open',
     'demo-token-007',
     19,
@@ -102,7 +120,7 @@ INSERT INTO grievances (
     'Some teams allow 3 days WFH while others mandate full time in-office. This feels unfair and arbitrary. We need consistent company-wide guidelines.',
     'policy',
     'high',
-    'daily',
+    'constant',
     'open',
     'demo-token-008',
     89,
@@ -114,7 +132,7 @@ INSERT INTO grievances (
     'The main printer near reception jams multiple times per day. Print jobs get lost and waste time. It needs to be replaced or serviced.',
     'technology',
     'low',
-    'daily',
+    'frequent',
     'resolved',
     'demo-token-009',
     15,
@@ -126,7 +144,7 @@ INSERT INTO grievances (
     'New mothers have no private space for pumping. The bathroom is not appropriate. OSHA requires employers to provide a private space.',
     'facilities',
     'high',
-    'weekly',
+    'occasional',
     'in_progress',
     'demo-token-010',
     31,
@@ -138,7 +156,7 @@ INSERT INTO grievances (
     'The kitchen is not being cleaned according to the posted schedule. Dishes pile up, trash overflows, and the fridge smells terrible.',
     'facilities',
     'medium',
-    'daily',
+    'constant',
     'open',
     'demo-token-011',
     23,
@@ -150,28 +168,10 @@ INSERT INTO grievances (
     'The $500/year professional development budget has not increased in 5 years. Conference tickets alone often cost more than this.',
     'benefits',
     'medium',
-    'yearly',
+    'once',
     'open',
     'demo-token-012',
     38,
     6,
     NOW() - INTERVAL '7 days'
-  )
-ON CONFLICT (id) DO NOTHING;
-
--- Insert demo anonymous tokens
-INSERT INTO anonymous_tokens (token, created_at)
-VALUES
-  ('demo-token-001', NOW() - INTERVAL '3 days'),
-  ('demo-token-002', NOW() - INTERVAL '5 days'),
-  ('demo-token-003', NOW() - INTERVAL '1 week'),
-  ('demo-token-004', NOW() - INTERVAL '2 days'),
-  ('demo-token-005', NOW() - INTERVAL '4 days'),
-  ('demo-token-006', NOW() - INTERVAL '6 days'),
-  ('demo-token-007', NOW() - INTERVAL '8 days'),
-  ('demo-token-008', NOW() - INTERVAL '1 day'),
-  ('demo-token-009', NOW() - INTERVAL '2 weeks'),
-  ('demo-token-010', NOW() - INTERVAL '5 days'),
-  ('demo-token-011', NOW() - INTERVAL '3 days'),
-  ('demo-token-012', NOW() - INTERVAL '7 days')
-ON CONFLICT (token) DO NOTHING;
+  );

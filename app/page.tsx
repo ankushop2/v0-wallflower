@@ -21,7 +21,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between px-4">
+        <div className="container mx-auto max-w-7xl flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <span className="font-bold text-sm">WF</span>
@@ -79,7 +79,7 @@ export default function HomePage() {
       </header>
 
       {/* Main Content */}
-      <main className="container px-4 py-8">
+      <main className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h2 className="text-3xl font-bold tracking-tight text-balance">Workplace Grievances</h2>
           <p className="mt-2 text-muted-foreground text-pretty">

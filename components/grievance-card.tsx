@@ -54,6 +54,18 @@ export function GrievanceCard({ grievance, compact = false }: GrievanceCardProps
     console.log("React with", emoji)
   }
 
+  const getTimeAgo = () => {
+    try {
+      const date = new Date(grievance.createdAt)
+      if (isNaN(date.getTime())) {
+        return "recently"
+      }
+      return formatDistanceToNow(date, { addSuffix: true })
+    } catch {
+      return "recently"
+    }
+  }
+
   return (
     <Card className="p-6 hover:border-primary/50 transition-colors">
       <div className="flex gap-4">
@@ -79,7 +91,7 @@ export function GrievanceCard({ grievance, compact = false }: GrievanceCardProps
                 <span className="text-muted-foreground">·</span>
                 <span className="text-sm text-muted-foreground flex items-center gap-1">
                   <ClockIcon className="h-3.5 w-3.5" />
-                  {formatDistanceToNow(new Date(grievance.createdAt), { addSuffix: true })}
+                  {getTimeAgo()}
                 </span>
               </div>
             </div>
