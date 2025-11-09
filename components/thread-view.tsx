@@ -11,7 +11,7 @@ import { ThreadTimeline } from "@/components/thread-timeline"
 import { ThreadSidebar } from "@/components/thread-sidebar"
 import { BlindDmDrawer } from "@/components/blind-dm-drawer"
 import { TriageCopilot } from "@/components/triage-copilot"
-import { formatDistanceToNow } from "date-fns"
+import { safeFormatDistanceToNow } from "@/lib/date-utils"
 import { ClockIcon, MessageSquareIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -80,7 +80,7 @@ export function ThreadView({ grievance, events, messages, triageSuggestion }: Th
                     <span className="text-muted-foreground">·</span>
                     <span className="text-sm text-muted-foreground flex items-center gap-1">
                       <ClockIcon className="h-3.5 w-3.5" />
-                      {formatDistanceToNow(new Date(grievance.createdAt), { addSuffix: true })}
+                      {safeFormatDistanceToNow(grievance.createdAt, { addSuffix: true })}
                     </span>
                   </div>
                 </div>
