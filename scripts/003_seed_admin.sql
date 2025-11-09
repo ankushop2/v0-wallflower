@@ -18,12 +18,12 @@ DECLARE
   admin_user_id UUID;
 BEGIN
   -- Try to find existing auth user
-  SELECT id INTO admin_user_id FROM auth.users WHERE email = 'admin@wallflower.com';
+  SELECT id INTO admin_user_id FROM auth.users WHERE email = 'vishal@wallflower.com';
   
   -- If found, insert/update the profile
   IF admin_user_id IS NOT NULL THEN
     INSERT INTO public.users (id, email, role, created_at)
-    VALUES (admin_user_id, 'admin@wallflower.com', 'admin', NOW())
+    VALUES (admin_user_id, 'vishal@wallflower.com', 'admin', NOW())
     ON CONFLICT (id) DO UPDATE SET role = 'admin';
     
     RAISE NOTICE 'Admin user profile created/updated';

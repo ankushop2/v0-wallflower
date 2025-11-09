@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircleIcon, LoaderIcon } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import { getClient } from "@/lib/supabase/client"
 
 export function LoginForm() {
   const router = useRouter()
@@ -24,7 +24,7 @@ export function LoginForm() {
     setLoading(true)
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
 
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
@@ -45,11 +45,11 @@ export function LoginForm() {
         throw new Error("User profile not found. Please contact administrator.")
       }
 
-      router.push("/moderation")
-      router.refresh()
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      window.location.href = "/moderation"
     } catch (err: any) {
       setError(err.message || "Login failed")
-    } finally {
       setLoading(false)
     }
   }

@@ -16,9 +16,8 @@ export class APIClient {
   private static async getAuthToken(): Promise<string | null> {
     if (typeof window === "undefined") return null
 
-    // Get Supabase session token
-    const { createClient } = await import("@/lib/supabase/client")
-    const supabase = createClient()
+    const { getClient } = await import("@/lib/supabase/client")
+    const supabase = getClient()
     const {
       data: { session },
     } = await supabase.auth.getSession()

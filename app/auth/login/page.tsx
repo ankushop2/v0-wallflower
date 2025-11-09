@@ -1,4 +1,3 @@
-import Link from "next/link"
 import { LoginForm } from "@/components/login-form"
 
 export default function LoginPage() {
@@ -16,13 +15,6 @@ export default function LoginPage() {
         </div>
 
         <LoginForm />
-
-        <p className="text-center text-sm text-muted-foreground">
-          Don't have an account?{" "}
-          <Link href="/auth/signup" className="font-medium text-primary hover:underline">
-            Sign up
-          </Link>
-        </p>
       </div>
     </div>
   )

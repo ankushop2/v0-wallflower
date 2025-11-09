@@ -15,11 +15,9 @@ import { AgentSuggestions } from "@/components/agent-suggestions"
 import { PiiHighlighter } from "@/components/pii-highlighter"
 import { SimilarPostsAlert } from "@/components/similar-posts-alert"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { Loader2Icon, AlertTriangleIcon, CheckCircle2Icon, SparklesIcon } from "lucide-react"
-import { generateMockAICompose, mockGrievances } from "@/lib/mock-data"
-import { findSimilarPosts } from "@/lib/similarity"
-import { autoCategorize } from "@/lib/auto-categorize"
+import { APIClient } from "@/lib/api/client"
+import { getAnonymousToken } from "@/lib/anonymous-token"
 import type { ComposeAgentBundle, Impact, Frequency, Grievance } from "@/lib/types"
 import { useRouter } from "next/navigation"
 
@@ -34,46 +32,92 @@ export function ComposePanel() {
     keywords: string[]
   } | null>(null)
   const [impact, setImpact] = useState<Impact>("medium")
-  const [frequency, setFrequency] = useState<Frequency>("weekly")
+  const [frequency, setFrequency] = useState<Frequency>("occasional")
   const [suggestedFix, setSuggestedFix] = useState("")
   const [agentSuggestions, setAgentSuggestions] = useState<ComposeAgentBundle | null>(null)
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [pseudonym, setPseudonym] = useState("")
-  const [piiDetected, setPiiDetected] = useState(false)
-  const [similarPosts, setSimilarPosts] = useState<Array<{ post: Grievance; similarity: number }>>([])
+  const [piiWarning, setPiiWarning] = useState(false)
+  const [similarPosts, setSimilarPosts] = useState<Grievance[]>([])
   const [similarPostsDismissed, setSimilarPostsDismissed] = useState(false)
+  const [allGrievances, setAllGrievances] = useState<Grievance[]>([])
 
   useEffect(() => {
-    if (title.length > 10 || body.length > 50) {
-      const result = autoCategorize(title, body)
-      setSuggestedCategory(result)
-
-      if (result.confidence > 0.7 && !category) {
-        setCategory(result.category)
+    const fetchGrievances = async () => {
+      try {
+        const response = await APIClient.listGrievances({ pageSize: 100 })
+        setAllGrievances(response.grievances || [])
+      } catch (err) {
+        console.error("[v0] Error fetching grievances for similarity:", err)
       }
     }
+    fetchGrievances()
+  }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (title.length > 10 || body.length > 50) {
+        try {
+          const response = await APIClient.assist(title + " " + body)
+          if (response.categorize) {
+            setSuggestedCategory({
+              category: response.categorize.suggestion.category,
+              confidence: response.categorize.confidence || 0.8,
+              keywords: [],
+            })
+
+            if (response.categorize.confidence && response.categorize.confidence > 0.7 && !category) {
+              setCategory(response.categorize.suggestion.category)
+            }
+          }
+        } catch (err) {
+          console.error("[v0] Error auto-categorizing:", err)
+        }
+      }
+    }, 1000)
+
+    return () => clearTimeout(timer)
   }, [title, body])
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if ((title.length > 15 || body.length > 100) && !similarPostsDismissed) {
-        const similar = findSimilarPosts(title, body, mockGrievances)
+      if ((title.length > 15 || body.length > 100) && !similarPostsDismissed && allGrievances.length > 0) {
+        const searchText = (title + " " + body).toLowerCase()
+        const keywords = searchText.split(/\s+/).filter((w) => w.length > 3)
+
+        const similar = allGrievances
+          .map((grievance) => {
+            const grievanceText = (grievance.title + " " + grievance.description).toLowerCase()
+            const matches = keywords.filter((kw) => grievanceText.includes(kw)).length
+            const similarity = keywords.length > 0 ? matches / keywords.length : 0
+            return { grievance, similarity }
+          })
+          .filter((item) => item.similarity >= 0.5)
+          .sort((a, b) => b.similarity - a.similarity)
+          .slice(0, 3)
+          .map((item) => item.grievance)
+
         setSimilarPosts(similar)
       }
     }, 1000)
 
     return () => clearTimeout(timer)
-  }, [title, body, similarPostsDismissed])
+  }, [title, body, similarPostsDismissed, allGrievances])
 
   const handleGetSuggestions = async () => {
     setIsLoadingSuggestions(true)
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    const suggestions = generateMockAICompose()
-    setAgentSuggestions(suggestions)
-    setPiiDetected(suggestions.pii?.suggestion.redactions.length > 0)
-    setIsLoadingSuggestions(false)
+
+    try {
+      const response = await APIClient.assist(title + "\n\n" + body)
+      setAgentSuggestions(response as ComposeAgentBundle)
+      setPiiWarning(response.pii?.suggestion.redactions && response.pii.suggestion.redactions.length > 0)
+    } catch (err) {
+      console.error("[v0] Error getting AI suggestions:", err)
+    } finally {
+      setIsLoadingSuggestions(false)
+    }
   }
 
   const handleAcceptRewrite = () => {
@@ -92,7 +136,7 @@ export function ComposePanel() {
   const handleAcceptPii = () => {
     if (agentSuggestions?.pii) {
       setBody(agentSuggestions.pii.suggestion.safeText)
-      setPiiDetected(false)
+      setPiiWarning(false)
     }
   }
 
@@ -109,22 +153,33 @@ export function ComposePanel() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (piiDetected) {
-      return
-    }
-
     setIsSubmitting(true)
 
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const anonymousToken = getAnonymousToken()
 
-    const generatedPseudonym = `Anon-${Math.floor(1000 + Math.random() * 9000)}`
-    setPseudonym(generatedPseudonym)
-    setSubmitted(true)
-    setIsSubmitting(false)
+      const response = await APIClient.createGrievance({
+        title,
+        description: body,
+        category,
+        impact,
+        frequency,
+        anonymous_token: anonymousToken,
+      })
 
-    setTimeout(() => {
-      router.push("/")
-    }, 3000)
+      const generatedPseudonym = `Anon-${anonymousToken.slice(-4)}`
+      setPseudonym(generatedPseudonym)
+      setSubmitted(true)
+
+      setTimeout(() => {
+        router.push("/")
+      }, 3000)
+    } catch (err) {
+      console.error("[v0] Error submitting grievance:", err)
+      alert("Failed to submit grievance. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   if (submitted) {
@@ -137,7 +192,7 @@ export function ComposePanel() {
         </div>
         <h3 className="text-2xl font-semibold mb-2">Grievance Submitted</h3>
         <p className="text-muted-foreground mb-4">
-          Your concern is pending moderation. You've been assigned the pseudonym:
+          Your concern has been submitted successfully. You've been assigned the pseudonym:
         </p>
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 text-primary font-mono font-semibold">
           {pseudonym}
@@ -151,7 +206,11 @@ export function ComposePanel() {
     <div className="grid gap-8 lg:grid-cols-[1fr,380px]">
       <form onSubmit={handleSubmit} className="space-y-6">
         {similarPosts.length > 0 && !similarPostsDismissed && (
-          <SimilarPostsAlert similarPosts={similarPosts} onMerge={handleMerge} onDismiss={handleDismissSimilar} />
+          <SimilarPostsAlert
+            similarPosts={similarPosts.map((p) => ({ post: p, similarity: 0.7 }))}
+            onMerge={handleMerge}
+            onDismiss={handleDismissSimilar}
+          />
         )}
 
         <Card className="p-6 space-y-6">
@@ -186,11 +245,11 @@ export function ComposePanel() {
                 className="resize-none text-base"
               />
             </PiiHighlighter>
-            {piiDetected && (
-              <Alert variant="destructive">
-                <AlertTriangleIcon className="h-4 w-4" />
-                <AlertDescription>
-                  We found private info (emails/IDs). Apply redactions before posting.
+            {piiWarning && (
+              <Alert className="border-amber-500/50 bg-amber-500/10">
+                <AlertTriangleIcon className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-900 dark:text-amber-200">
+                  We detected potential private info. Consider applying redactions before posting.
                 </AlertDescription>
               </Alert>
             )}
@@ -216,13 +275,6 @@ export function ComposePanel() {
                         {suggestedCategory.category}
                       </button>
                     </p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {suggestedCategory.keywords.slice(0, 3).map((kw, i) => (
-                        <Badge key={i} variant="secondary" className="text-xs">
-                          {kw}
-                        </Badge>
-                      ))}
-                    </div>
                   </div>
                 </div>
               )}
@@ -266,11 +318,7 @@ export function ComposePanel() {
               Get AI Suggestions
             </Button>
 
-            <Button
-              type="submit"
-              disabled={!title || !body || !category || isSubmitting || piiDetected}
-              className="sm:min-w-32"
-            >
+            <Button type="submit" disabled={!title || !body || !category || isSubmitting} className="sm:min-w-32">
               {isSubmitting && <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />}
               Submit Grievance
             </Button>
