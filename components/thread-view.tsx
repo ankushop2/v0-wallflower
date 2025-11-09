@@ -11,15 +11,17 @@ import { ThreadTimeline } from "@/components/thread-timeline"
 import { ThreadSidebar } from "@/components/thread-sidebar"
 import { BlindDmDrawer } from "@/components/blind-dm-drawer"
 import { TriageCopilot } from "@/components/triage-copilot"
+import { AdminEditPanel } from "@/components/admin-edit-panel"
+import { useAuth } from "@/lib/auth/auth-context"
 import { safeFormatDistanceToNow } from "@/lib/date-utils"
 import { ClockIcon, MessageSquareIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface ThreadViewProps {
   grievance: Grievance
-  events?: ThreadEvent[] // Made events optional
-  messages?: BlindMessage[] // Made messages optional
-  triageSuggestion: TriageSuggestion | null // Made triageSuggestion optional
+  events?: ThreadEvent[]
+  messages?: BlindMessage[]
+  triageSuggestion: TriageSuggestion | null
 }
 
 export function ThreadView({ grievance, events = [], messages = [], triageSuggestion }: ThreadViewProps) {
@@ -27,6 +29,7 @@ export function ThreadView({ grievance, events = [], messages = [], triageSugges
   const [localDown, setLocalDown] = useState(grievance.down)
   const [userVote, setUserVote] = useState<"up" | "down" | null>(null)
   const [isDmDrawerOpen, setIsDmDrawerOpen] = useState(false)
+  const { user, hasRole } = useAuth()
 
   const handleVote = (type: "up" | "down") => {
     if (userVote === type) {
@@ -58,10 +61,16 @@ export function ThreadView({ grievance, events = [], messages = [], triageSugges
     console.log("React with", emoji)
   }
 
+  const handleUpdate = () => {
+    window.location.reload()
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr,380px]">
       {/* Main Content */}
       <div className="space-y-6">
+        {user && hasRole(["admin", "moderator"]) && <AdminEditPanel grievance={grievance} onUpdate={handleUpdate} />}
+
         {/* Grievance Header */}
         <Card className="p-6">
           <div className="flex gap-4">

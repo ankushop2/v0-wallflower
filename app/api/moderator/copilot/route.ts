@@ -8,7 +8,7 @@ const getPendingGrievancesTool = tool({
   description: "Get the count of pending grievances waiting for moderation",
   inputSchema: z.object({}),
   async execute() {
-    const supabase = createServiceClient()
+    const supabase = await createServiceClient()
 
     const { count, error } = await supabase
       .from("grievances")
@@ -31,7 +31,7 @@ const getGrievancesByCategoryTool = tool({
     limit: z.number().optional().describe("Maximum number of categories to return"),
   }),
   async execute({ limit = 10 }) {
-    const supabase = createServiceClient()
+    const supabase = await createServiceClient()
 
     const { data, error } = await supabase.from("grievances").select("category, id").eq("is_hidden", false)
 
@@ -60,7 +60,7 @@ const searchGrievancesTool = tool({
     limit: z.number().optional().describe("Maximum number of results to return"),
   }),
   async execute({ keyword, limit = 5 }) {
-    const supabase = createServiceClient()
+    const supabase = await createServiceClient()
 
     const { data, error } = await supabase
       .from("grievances")
@@ -86,7 +86,7 @@ const getGrievanceByIdTool = tool({
     grievanceId: z.string().describe("The UUID of the grievance"),
   }),
   async execute({ grievanceId }) {
-    const supabase = createServiceClient()
+    const supabase = await createServiceClient()
 
     const { data, error } = await supabase.from("grievances").select("*").eq("id", grievanceId).maybeSingle()
 
@@ -112,7 +112,7 @@ const getStatisticsTool = tool({
   description: "Get overall platform statistics including total grievances, status breakdown, and moderation queue",
   inputSchema: z.object({}),
   async execute() {
-    const supabase = createServiceClient()
+    const supabase = await createServiceClient()
 
     const { data: grievances, error } = await supabase
       .from("grievances")
@@ -145,7 +145,7 @@ const getRecentActivityTool = tool({
     hours: z.number().optional().describe("Number of hours to look back (default: 24)"),
   }),
   async execute({ hours = 24 }) {
-    const supabase = createServiceClient()
+    const supabase = await createServiceClient()
 
     const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString()
 
@@ -169,7 +169,7 @@ const getModeratorWorkloadTool = tool({
   description: "Get workload statistics for moderators including pending items per moderator",
   inputSchema: z.object({}),
   async execute() {
-    const supabase = createServiceClient()
+    const supabase = await createServiceClient()
 
     const { data: moderators, error: modError } = await supabase
       .from("users")
@@ -207,7 +207,7 @@ const getWebhookStatusTool = tool({
   description: "Get status of active webhook integrations by category",
   inputSchema: z.object({}),
   async execute() {
-    const supabase = createServiceClient()
+    const supabase = await createServiceClient()
 
     const { data, error } = await supabase
       .from("webhook_integrations")
@@ -259,10 +259,11 @@ When providing information:
 - Highlight urgent items (high severity, pending long time)
 - Suggest next steps for moderators
 - Use data to support recommendations
+- ALWAYS provide a text response that explains the tool results in a conversational way
 
 Remember: You're assisting moderators in maintaining platform quality and responding to workplace concerns.`,
       tools,
-      maxSteps: 10,
+      maxSteps: 15, // Increase maxSteps to ensure AI generates final text response after tool calls
     })
 
     return result.toUIMessageStreamResponse()
