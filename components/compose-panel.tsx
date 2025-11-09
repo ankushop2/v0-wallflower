@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -8,9 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2Icon, CheckCircle2Icon, SparklesIcon, AlertTriangleIcon } from "lucide-react"
-import { APIClient } from "@/lib/api/client"
 import { getAnonymousToken } from "@/lib/anonymous-token"
-import type { Grievance } from "@/lib/types"
 import { useRouter } from "next/navigation"
 
 export function ComposePanel() {
@@ -24,29 +22,19 @@ export function ComposePanel() {
     category: string
     impact: string
     frequency: string
-    similarPosts: Array<{ id: string; title: string; similarity: number }>
-    hasPii: boolean
+    hasPII: boolean
     piiWarning?: string
+    similarExists: boolean
+    needsModeration: boolean
+    moderationReason?: string
   } | null>(null)
 
   const [isLoadingAI, setIsLoadingAI] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [needsModeration, setNeedsModeration] = useState(false)
   const [pseudonym, setPseudonym] = useState("")
   const [showSuggestions, setShowSuggestions] = useState(false)
-  const [allGrievances, setAllGrievances] = useState<Grievance[]>([])
-
-  useEffect(() => {
-    const fetchGrievances = async () => {
-      try {
-        const response = await APIClient.listGrievances({ pageSize: 100 })
-        setAllGrievances(response.grievances || [])
-      } catch (err) {
-        console.error("[v0] Error fetching grievances:", err)
-      }
-    }
-    fetchGrievances()
-  }, [])
 
   const handleGetAISuggestions = async () => {
     if (!title || !body) return
@@ -55,43 +43,27 @@ export function ComposePanel() {
     setShowSuggestions(true)
 
     try {
-      // Get AI assistance
-      const aiResponse = await APIClient.assist(title + "\n\n" + body)
+      const response = await fetch("/api/grievances/assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description: body }),
+      })
 
-      // Find similar posts
-      const searchText = (title + " " + body).toLowerCase()
-      const keywords = searchText.split(/\s+/).filter((w) => w.length > 3)
+      if (!response.ok) throw new Error("Failed to get AI suggestions")
 
-      const similar = allGrievances
-        .map((grievance) => {
-          const grievanceText = (
-            (grievance.title || "") +
-            " " +
-            (grievance.description || grievance.body || "")
-          ).toLowerCase()
-          const matches = keywords.filter((kw) => grievanceText.includes(kw)).length
-          const similarity = keywords.length > 0 ? matches / keywords.length : 0
-          return {
-            id: grievance.id,
-            title: grievance.title || "",
-            similarity,
-          }
-        })
-        .filter((item) => item.similarity >= 0.5)
-        .sort((a, b) => b.similarity - a.similarity)
-        .slice(0, 3)
+      const data = await response.json()
 
       setAiSuggestions({
-        improvedTitle: aiResponse.rewrite?.suggestion?.title || title,
-        improvedDescription: aiResponse.rewrite?.suggestion?.body || body,
-        category: aiResponse.categorize?.suggestion?.category || "",
-        impact: aiResponse.severity?.suggestion?.level || "medium",
-        frequency: "occasional",
-        similarPosts: similar,
-        hasPii: (aiResponse.pii?.suggestion?.redactions?.length || 0) > 0,
-        piiWarning: aiResponse.pii?.suggestion?.redactions?.length
-          ? `Found ${aiResponse.pii.suggestion.redactions.length} potential PII item(s)`
-          : undefined,
+        improvedTitle: data.improvedTitle || title,
+        improvedDescription: data.improvedDescription || body,
+        category: data.category || "other",
+        impact: data.impact || "medium",
+        frequency: data.frequency || "occasional",
+        hasPII: data.hasPII || false,
+        piiWarning: data.piiWarning,
+        similarExists: data.similarExists || false,
+        needsModeration: data.needsModeration || false,
+        moderationReason: data.moderationReason,
       })
     } catch (err) {
       console.error("[v0] Error getting AI suggestions:", err)
@@ -107,19 +79,42 @@ export function ComposePanel() {
     setIsSubmitting(true)
 
     try {
+      // Get AI analysis for categorization and moderation
+      const aiResponse = await fetch("/api/grievances/assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description: body }),
+      })
+
+      if (!aiResponse.ok) throw new Error("Failed to analyze grievance")
+
+      const aiData = await aiResponse.json()
+
       const anonymousToken = getAnonymousToken()
 
-      await APIClient.createGrievance({
-        title,
-        description: body,
-        category: "other",
-        impact: "medium",
-        frequency: "occasional",
-        anonymous_token: anonymousToken,
+      // Submit with original title/description but AI-analyzed fields
+      const response = await fetch("/api/grievances", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          description: body,
+          category: aiData.category || "other",
+          impact: aiData.impact || "medium",
+          frequency: aiData.frequency || "occasional",
+          anonymous_token: anonymousToken,
+          needsModeration: aiData.needsModeration || false,
+          moderationReason: aiData.moderationReason,
+        }),
       })
+
+      if (!response.ok) throw new Error("Failed to submit grievance")
+
+      const result = await response.json()
 
       const generatedPseudonym = `Anon-${anonymousToken.slice(-4)}`
       setPseudonym(generatedPseudonym)
+      setNeedsModeration(result.needsModeration || false)
       setSubmitted(true)
 
       setTimeout(() => {
@@ -141,17 +136,28 @@ export function ComposePanel() {
     try {
       const anonymousToken = getAnonymousToken()
 
-      await APIClient.createGrievance({
-        title: aiSuggestions.improvedTitle,
-        description: aiSuggestions.improvedDescription,
-        category: aiSuggestions.category,
-        impact: aiSuggestions.impact as any,
-        frequency: aiSuggestions.frequency as any,
-        anonymous_token: anonymousToken,
+      const response = await fetch("/api/grievances", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: aiSuggestions.improvedTitle,
+          description: aiSuggestions.improvedDescription,
+          category: aiSuggestions.category,
+          impact: aiSuggestions.impact,
+          frequency: aiSuggestions.frequency,
+          anonymous_token: anonymousToken,
+          needsModeration: aiSuggestions.needsModeration,
+          moderationReason: aiSuggestions.moderationReason,
+        }),
       })
+
+      if (!response.ok) throw new Error("Failed to submit grievance")
+
+      const result = await response.json()
 
       const generatedPseudonym = `Anon-${anonymousToken.slice(-4)}`
       setPseudonym(generatedPseudonym)
+      setNeedsModeration(result.needsModeration || false)
       setSubmitted(true)
 
       setTimeout(() => {
@@ -173,13 +179,25 @@ export function ComposePanel() {
             <CheckCircle2Icon className="h-8 w-8 text-green-500" />
           </div>
         </div>
-        <h3 className="text-2xl font-semibold mb-2">Grievance Submitted</h3>
+        <h3 className="text-2xl font-semibold mb-2">
+          {needsModeration ? "Grievance Submitted for Review" : "Grievance Submitted"}
+        </h3>
         <p className="text-muted-foreground mb-4">
-          Your concern has been submitted successfully. You've been assigned the pseudonym:
+          {needsModeration
+            ? "Your concern has been submitted and will be reviewed by a moderator before being published. You've been assigned the pseudonym:"
+            : "Your concern has been submitted successfully. You've been assigned the pseudonym:"}
         </p>
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 text-primary font-mono font-semibold">
           {pseudonym}
         </div>
+        {needsModeration && (
+          <Alert className="mt-6 border-amber-500/50 bg-amber-500/10">
+            <AlertTriangleIcon className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-sm text-amber-900 dark:text-amber-200">
+              Your grievance is awaiting moderator approval. You'll be able to track it once it's published.
+            </AlertDescription>
+          </Alert>
+        )}
         <p className="text-sm text-muted-foreground mt-6">Redirecting to home...</p>
       </Card>
     )
@@ -222,12 +240,11 @@ export function ComposePanel() {
         <div className="flex flex-col sm:flex-row gap-3 justify-end">
           <Button
             type="button"
-            variant="outline"
             onClick={handleDirectSubmit}
             disabled={!title || !body || isLoadingAI || showSuggestions || isSubmitting}
           >
             {isSubmitting && <Loader2Icon className="h-4 w-4 animate-spin mr-2" />}
-            Submit Without AI
+            Submit As-Is
           </Button>
           <Button
             type="button"
@@ -249,33 +266,28 @@ export function ComposePanel() {
             <h3 className="text-lg font-semibold">AI Suggestions</h3>
           </div>
 
-          {aiSuggestions.similarPosts.length > 0 && (
+          {aiSuggestions.needsModeration && (
             <Alert className="border-amber-500/50 bg-amber-500/10">
               <AlertTriangleIcon className="h-4 w-4 text-amber-600" />
               <AlertDescription>
-                <p className="font-semibold text-amber-900 dark:text-amber-200 mb-2">Similar grievances found:</p>
-                <ul className="space-y-2">
-                  {aiSuggestions.similarPosts.map((post) => (
-                    <li key={post.id}>
-                      <a
-                        href={`/thread/${post.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-amber-900 dark:text-amber-200 hover:underline"
-                      >
-                        {post.title} ({Math.round(post.similarity * 100)}% match)
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-                <p className="text-xs text-amber-800 dark:text-amber-300 mt-2">
-                  Consider upvoting an existing grievance instead of creating a duplicate
+                <p className="font-semibold text-amber-900 dark:text-amber-200 mb-1">Moderator Review Required</p>
+                <p className="text-sm text-amber-800 dark:text-amber-300">
+                  {aiSuggestions.moderationReason || "This grievance will be reviewed before being published."}
                 </p>
               </AlertDescription>
             </Alert>
           )}
 
-          {aiSuggestions.hasPii && (
+          {aiSuggestions.similarExists && (
+            <Alert className="border-blue-500/50 bg-blue-500/10">
+              <AlertTriangleIcon className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-sm text-blue-900 dark:text-blue-200">
+                Similar grievances may already exist. Consider searching before submitting.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {aiSuggestions.hasPII && (
             <Alert className="border-red-500/50 bg-red-500/10">
               <AlertTriangleIcon className="h-4 w-4 text-red-600" />
               <AlertDescription className="text-red-900 dark:text-red-200">

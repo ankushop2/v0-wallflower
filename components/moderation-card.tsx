@@ -7,30 +7,59 @@ import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { Grievance } from "@/lib/types"
 import { CheckIcon, XIcon, MessageSquareIcon, GitMergeIcon, UsersIcon } from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
+import { safeFormatDistanceToNow } from "@/lib/date-utils"
 import Link from "next/link"
 
 interface ModerationCardProps {
   grievance: Grievance
   isSelected: boolean
   onToggleSelect: (id: string) => void
+  onActionComplete?: () => void
 }
 
-export function ModerationCard({ grievance, isSelected, onToggleSelect }: ModerationCardProps) {
+export function ModerationCard({ grievance, isSelected, onToggleSelect, onActionComplete }: ModerationCardProps) {
   const [isProcessing, setIsProcessing] = useState(false)
 
   const handleApprove = async () => {
     setIsProcessing(true)
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    console.log("Approved:", grievance.id)
-    setIsProcessing(false)
+    try {
+      const response = await fetch(`/api/grievances/${grievance.id}/moderate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve" }),
+      })
+
+      if (!response.ok) throw new Error("Failed to approve")
+
+      console.log("[v0] Approved:", grievance.id)
+      onActionComplete?.()
+    } catch (error) {
+      console.error("[v0] Approve error:", error)
+      alert("Failed to approve grievance. Please try again.")
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const handleHide = async () => {
     setIsProcessing(true)
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    console.log("Hidden:", grievance.id)
-    setIsProcessing(false)
+    try {
+      const response = await fetch(`/api/grievances/${grievance.id}/moderate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject", reason: "Hidden by moderator" }),
+      })
+
+      if (!response.ok) throw new Error("Failed to hide")
+
+      console.log("[v0] Hidden:", grievance.id)
+      onActionComplete?.()
+    } catch (error) {
+      console.error("[v0] Hide error:", error)
+      alert("Failed to hide grievance. Please try again.")
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const handleAskForInfo = () => {
@@ -72,11 +101,9 @@ export function ModerationCard({ grievance, isSelected, onToggleSelect }: Modera
                 <span className="text-muted-foreground">·</span>
                 <Badge variant="outline">{grievance.category}</Badge>
                 <span className="text-muted-foreground">·</span>
-                <Badge variant="secondary">Severity {grievance.severity}</Badge>
+                <Badge variant="secondary">Severity {grievance.severity || 3}</Badge>
                 <span className="text-muted-foreground">·</span>
-                <span className="text-sm text-muted-foreground">
-                  {formatDistanceToNow(new Date(grievance.createdAt), { addSuffix: true })}
-                </span>
+                <span className="text-sm text-muted-foreground">{safeFormatDistanceToNow(grievance.createdAt)}</span>
               </div>
             </div>
           </div>
@@ -88,7 +115,7 @@ export function ModerationCard({ grievance, isSelected, onToggleSelect }: Modera
           <div className="flex flex-wrap gap-2">
             <Button variant="default" size="sm" onClick={handleApprove} disabled={isProcessing} className="gap-2">
               <CheckIcon className="h-4 w-4" />
-              Approve
+              Approve & Publish
             </Button>
             <Button
               variant="outline"
@@ -98,7 +125,7 @@ export function ModerationCard({ grievance, isSelected, onToggleSelect }: Modera
               className="gap-2 bg-transparent"
             >
               <XIcon className="h-4 w-4" />
-              Hide
+              Reject & Hide
             </Button>
             <Button variant="outline" size="sm" onClick={handleMerge} className="gap-2 bg-transparent">
               <GitMergeIcon className="h-4 w-4" />

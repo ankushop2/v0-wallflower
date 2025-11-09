@@ -73,8 +73,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     threadId = existingThread.id
   } else {
     // Create new thread
-    // For now, we'll use a placeholder moderator_id (first moderator in the system)
-    const { data: moderator } = await supabase.from("users").select("id").eq("role", "moderator").limit(1).single()
+    const { data: moderator } = await supabase.from("users").select("id").eq("role", "moderator").limit(1).maybeSingle()
 
     if (!moderator) {
       return NextResponse.json({ error: "No moderator available" }, { status: 500 })

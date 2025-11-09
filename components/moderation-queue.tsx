@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ModerationCard } from "@/components/moderation-card"
-import { mockGrievances } from "@/lib/mock-data"
+import type { Grievance } from "@/lib/types"
 import { CheckIcon, XIcon } from "lucide-react"
 import {
   AlertDialog,
@@ -24,29 +24,27 @@ export function ModerationQueue() {
   const [activeQueue, setActiveQueue] = useState<QueueType>("new")
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [bulkAction, setBulkAction] = useState<"approve" | "hide" | null>(null)
+  const [items, setItems] = useState<Grievance[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Mock data - in real app, filter by status
-  const newItems = mockGrievances.slice(0, 2)
-  const flaggedItems: typeof mockGrievances = []
-  const needsInfoItems: typeof mockGrievances = []
-  const escalatedItems = mockGrievances.slice(2, 3)
+  useEffect(() => {
+    fetchQueue()
+  }, [activeQueue])
 
-  const getCurrentItems = () => {
-    switch (activeQueue) {
-      case "new":
-        return newItems
-      case "flagged":
-        return flaggedItems
-      case "needs_info":
-        return needsInfoItems
-      case "escalated":
-        return escalatedItems
-      default:
-        return []
+  const fetchQueue = async () => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`/api/moderation/queue?queue=${activeQueue}`)
+      if (!response.ok) throw new Error("Failed to fetch queue")
+      const data = await response.json()
+      setItems(data.grievances || [])
+    } catch (error) {
+      console.error("[v0] Error fetching moderation queue:", error)
+      setItems([])
+    } finally {
+      setIsLoading(false)
     }
   }
-
-  const items = getCurrentItems()
 
   const handleToggleSelect = (id: string) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]))
@@ -68,10 +66,35 @@ export function ModerationQueue() {
     setBulkAction("hide")
   }
 
-  const confirmBulkAction = () => {
-    console.log(`Bulk ${bulkAction}:`, selectedIds)
-    setSelectedIds([])
-    setBulkAction(null)
+  const confirmBulkAction = async () => {
+    try {
+      const action = bulkAction === "approve" ? "approve" : "reject"
+
+      await Promise.all(
+        selectedIds.map((id) =>
+          fetch(`/api/grievances/${id}/moderate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action }),
+          }),
+        ),
+      )
+
+      // Refresh the queue
+      await fetchQueue()
+      setSelectedIds([])
+    } catch (error) {
+      console.error("[v0] Bulk action error:", error)
+    } finally {
+      setBulkAction(null)
+    }
+  }
+
+  const counts = {
+    new: activeQueue === "new" ? items.length : 0,
+    flagged: activeQueue === "flagged" ? items.length : 0,
+    needs_info: activeQueue === "needs_info" ? items.length : 0,
+    escalated: activeQueue === "escalated" ? items.length : 0,
   }
 
   return (
@@ -81,26 +104,26 @@ export function ModerationQueue() {
           <TabsList className="grid w-full grid-cols-4 sm:w-auto">
             <TabsTrigger value="new" className="relative">
               New
-              {newItems.length > 0 && (
+              {counts.new > 0 && (
                 <span className="ml-1.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 text-xs text-primary-foreground">
-                  {newItems.length}
+                  {counts.new}
                 </span>
               )}
             </TabsTrigger>
             <TabsTrigger value="flagged">
               AI-Flagged
-              {flaggedItems.length > 0 && (
+              {counts.flagged > 0 && (
                 <span className="ml-1.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-destructive px-1.5 text-xs text-destructive-foreground">
-                  {flaggedItems.length}
+                  {counts.flagged}
                 </span>
               )}
             </TabsTrigger>
             <TabsTrigger value="needs_info">Needs Info</TabsTrigger>
             <TabsTrigger value="escalated">
               Escalated
-              {escalatedItems.length > 0 && (
+              {counts.escalated > 0 && (
                 <span className="ml-1.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-amber-500 px-1.5 text-xs text-white">
-                  {escalatedItems.length}
+                  {counts.escalated}
                 </span>
               )}
             </TabsTrigger>
@@ -131,7 +154,12 @@ export function ModerationQueue() {
       )}
 
       <div className="space-y-4">
-        {items.length === 0 ? (
+        {isLoading ? (
+          <Card className="p-12 text-center">
+            <div className="mb-4 text-2xl opacity-20">⏳</div>
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          </Card>
+        ) : items.length === 0 ? (
           <Card className="p-12 text-center">
             <div className="mb-4 text-5xl opacity-20">✅</div>
             <h3 className="text-lg font-semibold mb-2">All clear!</h3>
@@ -144,6 +172,7 @@ export function ModerationQueue() {
               grievance={item}
               isSelected={selectedIds.includes(item.id)}
               onToggleSelect={handleToggleSelect}
+              onActionComplete={fetchQueue}
             />
           ))
         )}

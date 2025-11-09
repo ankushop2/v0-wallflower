@@ -84,17 +84,16 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
     const body = await request.json()
 
-    const { title, description, category, impact, frequency, anonymous_token } = body
+    const { title, description, category, impact, frequency, anonymous_token, needsModeration, moderationReason } = body
 
     // Ensure anonymous token exists
     const { data: tokenData, error: tokenError } = await supabase
       .from("anonymous_tokens")
       .select("token")
       .eq("token", anonymous_token)
-      .single()
+      .maybeSingle()
 
-    if (tokenError) {
-      // Create token if it doesn't exist
+    if (!tokenData) {
       await supabase.from("anonymous_tokens").insert({ token: anonymous_token })
     }
 
@@ -107,14 +106,25 @@ export async function POST(request: NextRequest) {
         impact,
         frequency,
         anonymous_token,
+        needs_moderation: needsModeration || false,
+        moderation_status: needsModeration ? "pending" : null,
+        moderation_reason: moderationReason || null,
+        is_hidden: needsModeration || false, // Hide until approved if needs moderation
       })
       .select()
       .single()
 
     if (error) throw error
 
-    return NextResponse.json({ grievance: data }, { status: 201 })
+    return NextResponse.json(
+      {
+        grievance: data,
+        needsModeration: needsModeration || false,
+      },
+      { status: 201 },
+    )
   } catch (error: any) {
+    console.error("[v0] Create grievance error:", error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
