@@ -1,10 +1,22 @@
+"use client"
+
 import { Suspense } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { LeaderboardTabs } from "@/components/leaderboard-tabs"
-import { PlusIcon, SettingsIcon } from "lucide-react"
+import { PlusIcon, SettingsIcon, LogOutIcon } from "lucide-react"
+import { useAuth } from "@/lib/auth/auth-context"
 
 export default function HomePage() {
+  const router = useRouter()
+  const { user, logout, hasRole } = useAuth()
+
+  const handleLogout = () => {
+    logout()
+    router.push("/auth/login")
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -21,28 +33,47 @@ export default function HomePage() {
             <Link href="/" className="text-sm font-medium text-foreground hover:text-foreground/80">
               Home
             </Link>
-            <Link href="/moderation" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-              Moderation
-            </Link>
-            <Link href="/routing" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-              Routing
-            </Link>
+            {user && hasRole(["moderator", "owner", "admin"]) && (
+              <>
+                <Link href="/moderation" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+                  Moderation
+                </Link>
+                <Link href="/routing" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+                  Routing
+                </Link>
+              </>
+            )}
           </nav>
 
           <div className="flex items-center gap-2">
-            <Link href="/settings">
-              <Button variant="outline" size="icon">
-                <SettingsIcon className="h-4 w-4" />
-                <span className="sr-only">Settings</span>
-              </Button>
-            </Link>
-            <Link href="/new">
-              <Button className="gap-2">
-                <PlusIcon className="h-4 w-4" />
-                <span className="hidden sm:inline">New Grievance</span>
-                <span className="sm:hidden">New</span>
-              </Button>
-            </Link>
+            {user ? (
+              <>
+                <span className="text-sm text-muted-foreground hidden sm:inline">
+                  {user.name || user.email} ({user.role})
+                </span>
+                <Link href="/settings">
+                  <Button variant="outline" size="icon">
+                    <SettingsIcon className="h-4 w-4" />
+                    <span className="sr-only">Settings</span>
+                  </Button>
+                </Link>
+                <Button variant="outline" size="icon" onClick={handleLogout}>
+                  <LogOutIcon className="h-4 w-4" />
+                  <span className="sr-only">Logout</span>
+                </Button>
+                <Link href="/new">
+                  <Button className="gap-2">
+                    <PlusIcon className="h-4 w-4" />
+                    <span className="hidden sm:inline">New Grievance</span>
+                    <span className="sm:hidden">New</span>
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <Link href="/auth/login">
+                <Button>Sign In</Button>
+              </Link>
+            )}
           </div>
         </div>
       </header>
