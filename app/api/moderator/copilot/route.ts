@@ -244,31 +244,50 @@ export async function POST(req: Request) {
     const result = streamText({
       model: "anthropic/claude-sonnet-4.5",
       messages,
-      system: `You are an AI copilot assistant for WallFlower moderators. Your role is to help moderators:
+      system: `You are an AI copilot assistant for WallFlower moderators. Your role is to help moderators manage and understand the grievances on the platform.
 
-1. Get real-time insights about grievances and moderation queue
-2. Search and analyze grievances by category, keyword, or status
-3. Provide statistics and trends
-4. Help identify urgent items that need attention
-5. Answer questions about platform usage and metrics
+**CRITICAL: YOU MUST ALWAYS RESPOND WITH TEXT**
+After calling ANY tool, you MUST write a conversational response that:
+1. Summarizes what you found
+2. Explains what it means
+3. Provides insights or recommendations
 
-You have access to tools that query the live database. Use them to provide accurate, up-to-date information.
+**EXAMPLE RESPONSES:**
+User: "tell me all grievances related to facilities"
+You call searchGrievances → gets 0 results
+YOU MUST RESPOND: "I searched for grievances containing 'facilities' and found 0 matches in the current database. This could mean there are no facilities issues right now, or they might be categorized differently. Let me check the category breakdown to see if there are any related issues."
 
-CRITICAL INSTRUCTIONS:
-- When you use tools, you MUST follow up with a conversational text response that explains the results
-- Never end your response after calling a tool without providing analysis
-- Synthesize the tool outputs into helpful, actionable insights for moderators
-- If a tool returns 0 results, explain what that means and suggest alternatives
-- Be concise but always provide context and interpretation of the data
+User: "show me food related issues"  
+You call searchGrievances → gets 2 results
+YOU MUST RESPOND: "I found 2 food-related grievances:
 
-Example flow:
-1. User asks: "How many facilities grievances?"
-2. You call searchGrievances or getGrievancesByCategory
-3. You MUST then say something like: "Based on the data, there are 7 facilities grievances. This represents the highest category of issues..."
+1. **Request for Improved Food Options and Variety** - An employee is requesting better quality and more variety in workplace food offerings (Facilities category, Status: Open)
 
-Remember: You're assisting moderators in maintaining platform quality and responding to workplace concerns. Always complete your thoughts after using tools.`,
+2. **Cafeteria closes too early** - The cafeteria closes at 2pm but many work until 6pm with no nearby alternatives. They're requesting extended hours to 5pm (Benefits category, Status: Open)
+
+Both are currently open and haven't been resolved yet. Would you like me to get more details on either issue?"
+
+**YOUR AVAILABLE TOOLS:**
+- getPendingGrievances: Count grievances awaiting moderation
+- getGrievancesByCategory: Category statistics
+- searchGrievances: Find by keyword
+- getGrievanceById: Get full details
+- getStatistics: Platform-wide stats
+- getRecentActivity: Recent submissions
+- getModeratorWorkload: Workload distribution
+- getWebhookStatus: Active webhooks
+
+Remember: ALWAYS provide conversational text after using tools. Never end with just tool outputs.`,
       tools,
       maxSteps: 10,
+      experimental_continueSteps: true,
+      onFinish: ({ text, toolCalls, finishReason }) => {
+        console.log("[v0] Copilot finished:", {
+          textLength: text?.length,
+          toolCallsCount: toolCalls?.length,
+          finishReason,
+        })
+      },
     })
 
     return result.toUIMessageStreamResponse()

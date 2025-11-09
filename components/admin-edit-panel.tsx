@@ -30,7 +30,6 @@ export function AdminEditPanel({ grievance, onUpdate }: AdminEditPanelProps) {
     body: grievance.body,
     category: grievance.category,
     status: grievance.status,
-    suggestedFix: grievance.suggestedFix || "",
   })
 
   const handleSubmit = async () => {
@@ -47,7 +46,6 @@ export function AdminEditPanel({ grievance, onUpdate }: AdminEditPanelProps) {
           body: formData.body,
           category: formData.category,
           status: formData.status,
-          suggested_fix: formData.suggestedFix,
         }),
       })
 
@@ -77,7 +75,6 @@ export function AdminEditPanel({ grievance, onUpdate }: AdminEditPanelProps) {
       body: grievance.body,
       category: grievance.category,
       status: grievance.status,
-      suggestedFix: grievance.suggestedFix || "",
     })
     setIsEditing(false)
     setError(null)
@@ -313,18 +310,6 @@ export function AdminEditPanel({ grievance, onUpdate }: AdminEditPanelProps) {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="suggestedFix">Suggested Fix (Optional)</Label>
-            <Textarea
-              id="suggestedFix"
-              value={formData.suggestedFix}
-              onChange={(e) => setFormData({ ...formData, suggestedFix: e.target.value })}
-              disabled={loading}
-              rows={3}
-              placeholder="Add a suggested solution or fix..."
-            />
           </div>
         </div>
       </div>
