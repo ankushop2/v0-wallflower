@@ -40,7 +40,26 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error
 
-    return NextResponse.json({ grievances: data })
+    const grievances = (data || []).map((row: any) => ({
+      id: row.id,
+      pseudonym: row.anonymous_token.substring(0, 8), // Use first 8 chars of token as pseudonym
+      title: row.title,
+      body: row.description,
+      category: row.category,
+      tags: [], // Tags not in DB schema, return empty array
+      severity: 3, // Default severity since not in schema
+      status: row.status,
+      impact: row.impact,
+      frequency: row.frequency,
+      score: row.upvotes - row.downvotes,
+      up: row.upvotes,
+      down: row.downvotes,
+      reactions: {}, // Reactions stored separately, return empty for now
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }))
+
+    return NextResponse.json({ grievances })
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

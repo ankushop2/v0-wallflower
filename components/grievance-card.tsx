@@ -102,7 +102,7 @@ export function GrievanceCard({ grievance, compact = false }: GrievanceCardProps
           {!compact && <p className="text-muted-foreground line-clamp-2 text-pretty">{grievance.body}</p>}
 
           {/* Tags */}
-          {grievance.tags.length > 0 && (
+          {grievance.tags && grievance.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {grievance.tags.map((tag) => (
                 <Badge key={tag} variant="secondary" className="text-xs">
@@ -114,7 +114,7 @@ export function GrievanceCard({ grievance, compact = false }: GrievanceCardProps
 
           {/* Footer */}
           <div className="flex items-center justify-between pt-2">
-            <ReactionBar reactions={grievance.reactions} onReact={handleReact} />
+            <ReactionBar reactions={grievance.reactions || {}} onReact={handleReact} />
 
             <Link
               href={`/thread/${grievance.id}`}
